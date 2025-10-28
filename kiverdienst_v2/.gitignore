@@ -1,0 +1,96 @@
+# KIVerdienst v2 - Git Ignore File
+
+# Environment variables (NEVER commit these!)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Database backups
+*.sql
+*.sql.gz
+backup_*.sql
+backups/
+
+# Docker volumes
+postgres_data/
+ollama_data/
+media_data/
+nginx_logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+/tmp/
+
+# SSL certificates
+docker/ssl/*.pem
+docker/ssl/*.key
+docker/ssl/*.crt
+*.pem
+*.key
+*.crt
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Media and uploads
+media/
+uploads/
+static/media/
+
+# Node modules (if frontend is in same repo)
+node_modules/
+.next/
+out/
+
+# Docker
+docker-compose.override.yml
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Secrets
+secrets/
+*.secret
