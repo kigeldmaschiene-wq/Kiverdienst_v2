@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - KIVerdienst v2</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="setup-page">
+    <div class="setup-container">
+        <!-- Setup Header -->
+        <div class="setup-header">
+            <h1>🎬 KIVerdienst v2</h1>
+            <p>Willkommen! Richten Sie Ihr System in wenigen Schritten ein.</p>
+        </div>
+
+        <!-- Progress Steps -->
+        <div class="setup-progress">
+            <div class="step active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-label">Willkommen</div>
+            </div>
+            <div class="step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-label">System prüfen</div>
+            </div>
+            <div class="step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-label">Konfiguration</div>
+            </div>
+            <div class="step" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-label">Fertig!</div>
+            </div>
+        </div>
+
+        <!-- Setup Steps Content -->
+        <div class="setup-content">
+            <!-- Step 1: Welcome -->
+            <div class="setup-step active" id="step-1">
+                <h2>Willkommen bei KIVerdienst v2</h2>
+                <p>Dieses Setup führt Sie durch die Erstkonfiguration des Systems.</p>
+                <div class="setup-features">
+                    <div class="feature">
+                        <span class="icon">🤖</span>
+                        <h3>Automatische Videogenerierung</h3>
+                        <p>KI-gesteuerte Content-Erstellung</p>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">📊</span>
+                        <h3>Performance-Analytics</h3>
+                        <p>Echtzeit-Tracking Ihrer Inhalte</p>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">⚡</span>
+                        <h3>Multi-Platform</h3>
+                        <p>TikTok, Instagram, YouTube</p>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-lg" onclick="nextStep()">Los geht's!</button>
+            </div>
+
+            <!-- Step 2: Requirements Check -->
+            <div class="setup-step" id="step-2">
+                <h2>System-Voraussetzungen prüfen</h2>
+                <p>Überprüfe, ob alle erforderlichen Komponenten verfügbar sind...</p>
+                
+                <div class="requirements-list" id="requirements-list">
+                    <div class="requirement checking">
+                        <span class="req-icon">⏳</span>
+                        <span class="req-label">Datenbank-Verbindung</span>
+                        <span class="req-status">Prüfe...</span>
+                    </div>
+                    <div class="requirement checking">
+                        <span class="req-icon">⏳</span>
+                        <span class="req-label">Docker-Container</span>
+                        <span class="req-status">Prüfe...</span>
+                    </div>
+                    <div class="requirement checking">
+                        <span class="req-icon">⏳</span>
+                        <span class="req-label">Festplattenspeicher</span>
+                        <span class="req-status">Prüfe...</span>
+                    </div>
+                </div>
+                
+                <div class="setup-actions">
+                    <button class="btn btn-secondary" onclick="prevStep()">Zurück</button>
+                    <button class="btn btn-primary" id="continue-step-2" onclick="nextStep()" disabled>Weiter</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Configuration -->
+            <div class="setup-step" id="step-3">
+                <h2>System konfigurieren</h2>
+                <p>Bitte geben Sie Ihre Konfigurationsdaten ein.</p>
+                
+                <form id="setup-form" class="setup-form">
+                    <div class="form-group">
+                        <label for="admin-email">Administrator E-Mail *</label>
+                        <input type="email" id="admin-email" name="admin_email" required 
+                               placeholder="admin@beispiel.de">
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>API-Keys (optional - später konfigurierbar)</h3>
+                        <p class="help-text">Sie können diese API-Keys jetzt eingeben oder später über das Dashboard hinzufügen.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="openai-key">OpenAI API Key</label>
+                        <input type="text" id="openai-key" name="openai_api_key" 
+                               placeholder="sk-...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="elevenlabs-key">ElevenLabs API Key</label>
+                        <input type="text" id="elevenlabs-key" name="elevenlabs_api_key" 
+                               placeholder="...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="replicate-token">Replicate API Token</label>
+                        <input type="text" id="replicate-token" name="replicate_api_token" 
+                               placeholder="r8_...">
+                    </div>
+                </form>
+                
+                <div class="setup-actions">
+                    <button class="btn btn-secondary" onclick="prevStep()">Zurück</button>
+                    <button class="btn btn-primary" onclick="submitSetup()">Setup abschließen</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Complete -->
+            <div class="setup-step" id="step-4">
+                <div class="success-icon">✅</div>
+                <h2>Setup erfolgreich abgeschlossen!</h2>
+                <p>Ihr KIVerdienst v2 System ist jetzt einsatzbereit.</p>
+                
+                <div class="next-steps">
+                    <h3>Nächste Schritte:</h3>
+                    <ol>
+                        <li>Erstellen Sie Ihre erste Brand</li>
+                        <li>Definieren Sie Charaktere und Tonalität</li>
+                        <li>Starten Sie die Content-Generierung</li>
+                    </ol>
+                </div>
+                
+                <a href="/dashboard" class="btn btn-primary btn-lg">Zum Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        let currentStep = 1;
+        const totalSteps = 4;
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                // Hide current step
+                document.getElementById(`step-${currentStep}`).classList.remove('active');
+                document.querySelector(`.step[data-step="${currentStep}"]`).classList.remove('active');
+                document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('completed');
+                
+                // Show next step
+                currentStep++;
+                document.getElementById(`step-${currentStep}`).classList.add('active');
+                document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active');
+                
+                // Special actions for specific steps
+                if (currentStep === 2) {
+                    checkRequirements();
+                }
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                // Hide current step
+                document.getElementById(`step-${currentStep}`).classList.remove('active');
+                document.querySelector(`.step[data-step="${currentStep}"]`).classList.remove('active');
+                
+                // Show previous step
+                currentStep--;
+                document.getElementById(`step-${currentStep}`).classList.add('active');
+                document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active');
+                document.querySelector(`.step[data-step="${currentStep}"]`).classList.remove('completed');
+            }
+        }
+
+        async function checkRequirements() {
+            const requirements = document.querySelectorAll('.requirement');
+            
+            try {
+                const response = await fetch('/api/setup/requirements');
+                const data = await response.json();
+                
+                // Update UI based on results
+                const reqList = document.getElementById('requirements-list');
+                reqList.innerHTML = '';
+                
+                for (const [key, req] of Object.entries(data.requirements)) {
+                    const div = document.createElement('div');
+                    div.className = `requirement ${req.status === 'ok' ? 'success' : 'error'}`;
+                    div.innerHTML = `
+                        <span class="req-icon">${req.status === 'ok' ? '✅' : '❌'}</span>
+                        <span class="req-label">${key}</span>
+                        <span class="req-status">${req.message}</span>
+                    `;
+                    reqList.appendChild(div);
+                }
+                
+                // Enable continue button if all requirements met
+                if (data.all_met) {
+                    document.getElementById('continue-step-2').disabled = false;
+                }
+            } catch (error) {
+                console.error('Error checking requirements:', error);
+                showToast('Fehler beim Prüfen der Voraussetzungen', 'error');
+            }
+        }
+
+        async function submitSetup() {
+            const form = document.getElementById('setup-form');
+            const formData = new FormData(form);
+            
+            const data = {
+                admin_email: formData.get('admin_email'),
+                openai_api_key: formData.get('openai_api_key') || '',
+                elevenlabs_api_key: formData.get('elevenlabs_api_key') || '',
+                replicate_api_token: formData.get('replicate_api_token') || ''
+            };
+            
+            try {
+                // Initialize setup
+                const initResponse = await fetch('/api/setup/init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!initResponse.ok) {
+                    throw new Error('Setup initialization failed');
+                }
+                
+                // Complete setup
+                const completeResponse = await fetch('/api/setup/complete', {
+                    method: 'POST'
+                });
+                
+                if (!completeResponse.ok) {
+                    throw new Error('Setup completion failed');
+                }
+                
+                // Move to final step
+                nextStep();
+            } catch (error) {
+                console.error('Setup error:', error);
+                showToast('Fehler beim Setup: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}Brands - KIVerdienst v2{% endblock %}
+
+{% block content %}
+<div class="brands-page">
+    <div class="page-header">
+        <div>
+            <h1>Brands verwalten</h1>
+            <p>Erstellen und verwalten Sie Ihre Content-Brands</p>
+        </div>
+        <button class="btn btn-primary" onclick="showCreateModal()">
+            <span>➕</span> Neue Brand erstellen
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+        <input type="text" id="search-input" placeholder="Suche nach Brand-Name..." 
+               onkeyup="filterBrands()">
+        <select id="status-filter" onchange="filterBrands()">
+            <option value="">Alle Status</option>
+            <option value="active">Aktiv</option>
+            <option value="paused">Pausiert</option>
+            <option value="archived">Archiviert</option>
+        </select>
+    </div>
+
+    <!-- Brands List -->
+    <div class="brands-list" id="brands-list">
+        {% if brands %}
+            {% for brand in brands %}
+            <div class="brand-card" data-brand-id="{{ brand.id }}" 
+                 data-status="{{ brand.status }}" data-name="{{ brand.name }}">
+                <div class="brand-header">
+                    <div>
+                        <h3>{{ brand.name }}</h3>
+                        <p class="brand-niche">{{ brand.niche or 'Keine Nische' }}</p>
+                    </div>
+                    <span class="badge badge-{{ 'success' if brand.status == 'active' else 'warning' }}">
+                        {{ brand.status }}
+                    </span>
+                </div>
+                
+                <div class="brand-info">
+                    <div class="info-item">
+                        <span class="label">Tonalität:</span>
+                        <span class="value">{{ brand.tonality or 'Nicht festgelegt' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Zielgruppe:</span>
+                        <span class="value">{{ brand.target_audience or 'Nicht festgelegt' }}</span>
+                    </div>
+                </div>
+                
+                <div class="brand-social">
+                    {% if brand.tiktok_account %}
+                    <span class="social-badge">🎵 TikTok: {{ brand.tiktok_account }}</span>
+                    {% endif %}
+                    {% if brand.instagram_account %}
+                    <span class="social-badge">📷 Instagram: {{ brand.instagram_account }}</span>
+                    {% endif %}
+                    {% if brand.youtube_account %}
+                    <span class="social-badge">📺 YouTube: {{ brand.youtube_account }}</span>
+                    {% endif %}
+                </div>
+                
+                <div class="brand-actions">
+                    <button class="btn btn-sm btn-secondary" 
+                            onclick="editBrand({{ brand.id }})">Bearbeiten</button>
+                    <button class="btn btn-sm btn-{{ 'warning' if brand.status == 'active' else 'success' }}" 
+                            onclick="toggleBrandStatus({{ brand.id }})">
+                        {{ 'Pausieren' if brand.status == 'active' else 'Aktivieren' }}
+                    </button>
+                    <button class="btn btn-sm btn-danger" 
+                            onclick="deleteBrand({{ brand.id }}, '{{ brand.name }}')">Löschen</button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <span class="empty-icon">📦</span>
+                <h3>Keine Brands vorhanden</h3>
+                <p>Erstellen Sie Ihre erste Brand, um zu beginnen.</p>
+                <button class="btn btn-primary" onclick="showCreateModal()">Erste Brand erstellen</button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Create/Edit Brand Modal -->
+<div id="brand-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-title">Neue Brand erstellen</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        
+        <form id="brand-form" class="form">
+            <input type="hidden" id="brand-id" value="">
+            
+            <div class="form-group">
+                <label for="brand-name">Name *</label>
+                <input type="text" id="brand-name" name="name" required 
+                       placeholder="z.B. TechTrends">
+            </div>
+            
+            <div class="form-group">
+                <label for="brand-niche">Nische</label>
+                <select id="brand-niche" name="niche">
+                    <option value="">Bitte wählen...</option>
+                    <option value="Technology">Technologie</option>
+                    <option value="Fitness & Health">Fitness & Gesundheit</option>
+                    <option value="Cooking & Recipes">Kochen & Rezepte</option>
+                    <option value="Fashion & Beauty">Mode & Beauty</option>
+                    <option value="Travel">Reisen</option>
+                    <option value="Finance">Finanzen</option>
+                    <option value="Education">Bildung</option>
+                    <option value="Entertainment">Unterhaltung</option>
+                    <option value="DIY & Crafts">DIY & Handwerk</option>
+                    <option value="Custom">Benutzerdefiniert</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="custom-niche-group" style="display: none;">
+                <label for="custom-niche">Benutzerdefinierte Nische</label>
+                <input type="text" id="custom-niche" placeholder="Geben Sie Ihre Nische ein">
+            </div>
+            
+            <div class="form-group">
+                <label for="brand-tonality">Tonalität</label>
+                <input type="text" id="brand-tonality" name="tonality" 
+                       placeholder="z.B. Informativ und enthusiastisch">
+            </div>
+            
+            <div class="form-group">
+                <label for="brand-audience">Zielgruppe</label>
+                <textarea id="brand-audience" name="target_audience" rows="3"
+                          placeholder="z.B. Technikbegeisterte 18-35 Jahre"></textarea>
+            </div>
+            
+            <div class="form-section">
+                <h3>Social Media Accounts</h3>
+            </div>
+            
+            <div class="form-group">
+                <label for="brand-tiktok">TikTok Account</label>
+                <input type="text" id="brand-tiktok" name="tiktok_account" 
+                       placeholder="@username">
+            </div>
+            
+            <div class="form-group">
+                <label for="brand-instagram">Instagram Account (optional)</label>
+                <input type="text" id="brand-instagram" name="instagram_account" 
+                       placeholder="@username">
+            </div>
+            
+            <div class="form-group">
+                <label for="brand-youtube">YouTube Account (optional)</label>
+                <input type="text" id="brand-youtube" name="youtube_account" 
+                       placeholder="@channel">
+            </div>
+        </form>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
+            <button class="btn btn-primary" onclick="saveBrand()">Speichern</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Show/hide custom niche input
+    document.getElementById('brand-niche').addEventListener('change', function() {
+        const customGroup = document.getElementById('custom-niche-group');
+        customGroup.style.display = this.value === 'Custom' ? 'block' : 'none';
+    });
+
+    function showCreateModal() {
+        document.getElementById('modal-title').textContent = 'Neue Brand erstellen';
+        document.getElementById('brand-form').reset();
+        document.getElementById('brand-id').value = '';
+        document.getElementById('brand-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('brand-modal').style.display = 'none';
+    }
+
+    async function editBrand(brandId) {
+        try {
+            const response = await fetch(`/api/brands/${brandId}`);
+            const brand = await response.json();
+            
+            document.getElementById('modal-title').textContent = 'Brand bearbeiten';
+            document.getElementById('brand-id').value = brand.id;
+            document.getElementById('brand-name').value = brand.name;
+            document.getElementById('brand-niche').value = brand.niche || '';
+            document.getElementById('brand-tonality').value = brand.tonality || '';
+            document.getElementById('brand-audience').value = brand.target_audience || '';
+            document.getElementById('brand-tiktok').value = brand.tiktok_account || '';
+            document.getElementById('brand-instagram').value = brand.instagram_account || '';
+            document.getElementById('brand-youtube').value = brand.youtube_account || '';
+            
+            document.getElementById('brand-modal').style.display = 'flex';
+        } catch (error) {
+            showToast('Fehler beim Laden der Brand', 'error');
+        }
+    }
+
+    async function saveBrand() {
+        const form = document.getElementById('brand-form');
+        const formData = new FormData(form);
+        const brandId = document.getElementById('brand-id').value;
+        
+        // Get niche value (custom or selected)
+        let niche = formData.get('niche');
+        if (niche === 'Custom') {
+            niche = document.getElementById('custom-niche').value;
+        }
+        
+        const data = {
+            name: formData.get('name'),
+            niche: niche,
+            tonality: formData.get('tonality'),
+            target_audience: formData.get('target_audience'),
+            tiktok_account: formData.get('tiktok_account'),
+            instagram_account: formData.get('instagram_account'),
+            youtube_account: formData.get('youtube_account')
+        };
+        
+        try {
+            const url = brandId ? `/api/brands/${brandId}` : '/api/brands';
+            const method = brandId ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                showToast('Brand erfolgreich gespeichert', 'success');
+                closeModal();
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast('Fehler beim Speichern der Brand', 'error');
+            }
+        } catch (error) {
+            showToast('Fehler: ' + error.message, 'error');
+        }
+    }
+
+    async function toggleBrandStatus(brandId) {
+        try {
+            const response = await fetch(`/api/brands/${brandId}/status`, {
+                method: 'PATCH'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                showToast(data.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast('Fehler beim Ändern des Status', 'error');
+            }
+        } catch (error) {
+            showToast('Fehler: ' + error.message, 'error');
+        }
+    }
+
+    async function deleteBrand(brandId, brandName) {
+        if (!confirm(`Möchten Sie die Brand "${brandName}" wirklich löschen?\n\nAlle zugehörigen Daten werden ebenfalls gelöscht!`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/brands/${brandId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showToast('Brand erfolgreich gelöscht', 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast('Fehler beim Löschen der Brand', 'error');
+            }
+        } catch (error) {
+            showToast('Fehler: ' + error.message, 'error');
+        }
+    }
+
+    function filterBrands() {
+        const searchTerm = document.getElementById('search-input').value.toLowerCase();
+        const statusFilter = document.getElementById('status-filter').value;
+        const brandCards = document.querySelectorAll('.brand-card');
+        
+        brandCards.forEach(card => {
+            const name = card.dataset.name.toLowerCase();
+            const status = card.dataset.status;
+            
+            const matchesSearch = name.includes(searchTerm);
+            const matchesStatus = !statusFilter || status === statusFilter;
+            
+            card.style.display = (matchesSearch && matchesStatus) ? 'block' : 'none';
+        });
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('brand-modal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
+</script>
+{% endblock %}

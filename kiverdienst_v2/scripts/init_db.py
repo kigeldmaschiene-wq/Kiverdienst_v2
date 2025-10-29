@@ -1,376 +1,249 @@
 #!/usr/bin/env python3
 """
-KIVerdienst v2 Database Initialization Script
+KIVerdienst v2 - Database Initialization Script
 
-This script initializes the PostgreSQL database by:
-1. Connecting to PostgreSQL using environment variables
-2. Checking if tables already exist
-3. Running the schema.sql file if needed
-4. Verifying the database setup
-5. Providing detailed logging and error handling
+This script initializes the database schema and optionally loads sample data.
+Usage: python init_db.py [--samples] [--reset]
 """
 
 import os
 import sys
-import time
+import argparse
+import psycopg2
+from psycopg2 import sql
 import logging
-from pathlib import Path
-from typing import Optional
-
-try:
-    import psycopg2
-    from psycopg2 import sql
-    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-except ImportError:
-    print("ERROR: psycopg2 not installed. Install it with: pip install psycopg2-binary")
-    sys.exit(1)
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('/tmp/kiverdienst_init.log')
-    ]
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
 
-class DatabaseInitializer:
-    """Handles database initialization and setup"""
-    
-    def __init__(self):
-        """Initialize with environment variables"""
-        self.db_config = {
-            'host': os.getenv('POSTGRES_HOST', 'postgres'),
-            'port': os.getenv('POSTGRES_PORT', '5432'),
-            'database': os.getenv('POSTGRES_DB', 'kiverdienst_v2'),
-            'user': os.getenv('POSTGRES_USER', 'kiverdienst'),
-            'password': os.getenv('POSTGRES_PASSWORD')
-        }
+def get_db_connection():
+    """
+    Create database connection from environment variables
+    """
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv('POSTGRES_HOST', 'postgres'),
+            port=os.getenv('POSTGRES_PORT', '5432'),
+            database=os.getenv('POSTGRES_DB', 'kiverdienst_v2'),
+            user=os.getenv('POSTGRES_USER', 'kiverdienst'),
+            password=os.getenv('POSTGRES_PASSWORD', 'password')
+        )
+        logger.info("✓ Database connection established")
+        return conn
+    except Exception as e:
+        logger.error(f"✗ Database connection failed: {e}")
+        sys.exit(1)
+
+
+def execute_sql_file(conn, filepath):
+    """
+    Execute SQL commands from a file
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            sql_content = f.read()
         
-        # Validate required environment variables
-        if not self.db_config['password']:
-            raise ValueError("POSTGRES_PASSWORD environment variable is required")
+        cursor = conn.cursor()
+        cursor.execute(sql_content)
+        conn.commit()
+        cursor.close()
         
-        self.schema_file = Path('/opt/kiverdienst_v2/sql/schema.sql')
-        self.connection: Optional[psycopg2.extensions.connection] = None
-        
-    def wait_for_database(self, max_retries: int = 30, retry_delay: int = 2) -> bool:
-        """
-        Wait for PostgreSQL to be ready
-        
-        Args:
-            max_retries: Maximum number of connection attempts
-            retry_delay: Delay between retries in seconds
-            
-        Returns:
-            True if connection successful, False otherwise
-        """
-        logger.info("Waiting for PostgreSQL to be ready...")
-        
-        for attempt in range(1, max_retries + 1):
-            try:
-                conn = psycopg2.connect(**self.db_config)
-                conn.close()
-                logger.info(f"✓ PostgreSQL is ready (attempt {attempt}/{max_retries})")
-                return True
-            except psycopg2.OperationalError as e:
-                logger.warning(f"Attempt {attempt}/{max_retries} failed: {e}")
-                if attempt < max_retries:
-                    time.sleep(retry_delay)
-                else:
-                    logger.error("Failed to connect to PostgreSQL after maximum retries")
-                    return False
-        
+        logger.info(f"✓ Executed SQL file: {filepath}")
+        return True
+    except Exception as e:
+        logger.error(f"✗ Failed to execute {filepath}: {e}")
+        conn.rollback()
         return False
+
+
+def reset_database(conn):
+    """
+    Drop all tables (for reset)
+    """
+    logger.warning("Resetting database - all data will be lost!")
     
-    def connect(self) -> bool:
-        """
-        Establish database connection
+    try:
+        cursor = conn.cursor()
         
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            self.connection = psycopg2.connect(**self.db_config)
-            self.connection.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-            logger.info(f"✓ Connected to database: {self.db_config['database']}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to connect to database: {e}")
-            return False
-    
-    def check_tables_exist(self) -> bool:
-        """
-        Check if required tables already exist
-        
-        Returns:
-            True if tables exist, False otherwise
-        """
-        required_tables = [
-            'brands', 'characters', 'character_clips', 'video_scripts',
-            'videos', 'performance_analytics', 'products', 'posting_schedule',
-            'system_config', 'audit_logs'
+        # Drop all tables in reverse order (respecting foreign keys)
+        tables = [
+            'performance_analytics',
+            'posting_schedule',
+            'products',
+            'system_logs',
+            'videos',
+            'video_scripts',
+            'characters',
+            'brands',
+            'system_config'
         ]
         
-        try:
-            with self.connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT table_name 
-                    FROM information_schema.tables 
-                    WHERE table_schema = 'public' 
-                    AND table_type = 'BASE TABLE'
-                """)
-                existing_tables = [row[0] for row in cursor.fetchall()]
-                
-                missing_tables = set(required_tables) - set(existing_tables)
-                
-                if not missing_tables:
-                    logger.info(f"✓ All required tables exist: {len(required_tables)} tables")
-                    return True
-                else:
-                    logger.info(f"Missing tables: {missing_tables}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"Failed to check tables: {e}")
-            return False
+        for table in tables:
+            cursor.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
+            logger.info(f"  Dropped table: {table}")
+        
+        # Drop views
+        cursor.execute("DROP VIEW IF EXISTS brand_performance CASCADE")
+        cursor.execute("DROP VIEW IF EXISTS recent_activity CASCADE")
+        
+        # Drop functions
+        cursor.execute("DROP FUNCTION IF EXISTS update_updated_at_column CASCADE")
+        
+        conn.commit()
+        cursor.close()
+        
+        logger.info("✓ Database reset complete")
+        return True
+    except Exception as e:
+        logger.error(f"✗ Failed to reset database: {e}")
+        conn.rollback()
+        return False
+
+
+def check_tables_exist(conn):
+    """
+    Check if database tables exist
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT count(*) 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        """)
+        count = cursor.fetchone()[0]
+        cursor.close()
+        return count > 0
+    except Exception as e:
+        logger.error(f"Error checking tables: {e}")
+        return False
+
+
+def verify_installation(conn):
+    """
+    Verify database installation
+    """
+    logger.info("Verifying installation...")
     
-    def run_schema_sql(self) -> bool:
-        """
-        Execute the schema.sql file
+    try:
+        cursor = conn.cursor()
         
-        Returns:
-            True if successful, False otherwise
-        """
-        if not self.schema_file.exists():
-            logger.error(f"Schema file not found: {self.schema_file}")
-            return False
+        # Count tables
+        cursor.execute("""
+            SELECT count(*) 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        """)
+        table_count = cursor.fetchone()[0]
         
-        try:
-            logger.info(f"Reading schema file: {self.schema_file}")
-            with open(self.schema_file, 'r') as f:
-                schema_sql = f.read()
-            
-            logger.info("Executing schema SQL...")
-            with self.connection.cursor() as cursor:
-                cursor.execute(schema_sql)
-            
-            logger.info("✓ Schema executed successfully")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Failed to execute schema: {e}")
-            return False
-    
-    def verify_setup(self) -> bool:
-        """
-        Verify database setup by checking tables, indexes, and functions
+        # Count views
+        cursor.execute("""
+            SELECT count(*) 
+            FROM information_schema.views 
+            WHERE table_schema = 'public'
+        """)
+        view_count = cursor.fetchone()[0]
         
-        Returns:
-            True if verification successful, False otherwise
-        """
-        try:
-            with self.connection.cursor() as cursor:
-                # Count tables
-                cursor.execute("""
-                    SELECT COUNT(*) 
-                    FROM information_schema.tables 
-                    WHERE table_schema = 'public' 
-                    AND table_type = 'BASE TABLE'
-                """)
-                table_count = cursor.fetchone()[0]
-                
-                # Count indexes
-                cursor.execute("""
-                    SELECT COUNT(*) 
-                    FROM pg_indexes 
-                    WHERE schemaname = 'public'
-                """)
-                index_count = cursor.fetchone()[0]
-                
-                # Count views
-                cursor.execute("""
-                    SELECT COUNT(*) 
-                    FROM information_schema.views 
-                    WHERE table_schema = 'public'
-                """)
-                view_count = cursor.fetchone()[0]
-                
-                # Count triggers
-                cursor.execute("""
-                    SELECT COUNT(*) 
-                    FROM information_schema.triggers 
-                    WHERE trigger_schema = 'public'
-                """)
-                trigger_count = cursor.fetchone()[0]
-                
-                # Check system_config entries
-                cursor.execute("SELECT COUNT(*) FROM system_config")
-                config_count = cursor.fetchone()[0]
-                
-                logger.info("=" * 50)
-                logger.info("DATABASE VERIFICATION SUMMARY")
-                logger.info("=" * 50)
-                logger.info(f"✓ Tables:    {table_count}")
-                logger.info(f"✓ Indexes:   {index_count}")
-                logger.info(f"✓ Views:     {view_count}")
-                logger.info(f"✓ Triggers:  {trigger_count}")
-                logger.info(f"✓ Config:    {config_count} entries")
-                logger.info("=" * 50)
-                
-                # Verify minimum requirements
-                if table_count < 9:
-                    logger.error(f"Expected at least 9 tables, found {table_count}")
-                    return False
-                
-                if config_count < 1:
-                    logger.error("No system configuration entries found")
-                    return False
-                
-                logger.info("✓ Database verification passed")
-                return True
-                
-        except Exception as e:
-            logger.error(f"Verification failed: {e}")
-            return False
-    
-    def insert_sample_data(self) -> bool:
-        """
-        Insert minimal sample data for testing (optional)
+        # Count system config entries
+        cursor.execute("SELECT count(*) FROM system_config")
+        config_count = cursor.fetchone()[0]
         
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            with self.connection.cursor() as cursor:
-                # Check if sample brand already exists
-                cursor.execute("SELECT COUNT(*) FROM brands WHERE name = 'Sample Brand'")
-                if cursor.fetchone()[0] > 0:
-                    logger.info("Sample data already exists, skipping...")
-                    return True
-                
-                # Insert sample brand
-                cursor.execute("""
-                    INSERT INTO brands (name, niche, tonality, target_audience, status)
-                    VALUES (%s, %s, %s, %s, %s)
-                    RETURNING id
-                """, (
-                    'Sample Brand',
-                    'Technology',
-                    'Professional',
-                    'Tech enthusiasts aged 25-40',
-                    'active'
-                ))
-                
-                logger.info("✓ Sample data inserted successfully")
-                return True
-                
-        except Exception as e:
-            logger.error(f"Failed to insert sample data: {e}")
-            return False
-    
-    def close(self):
-        """Close database connection"""
-        if self.connection:
-            self.connection.close()
-            logger.info("Database connection closed")
-    
-    def run(self, skip_if_exists: bool = True, insert_samples: bool = False) -> bool:
-        """
-        Run the complete initialization process
+        cursor.close()
         
-        Args:
-            skip_if_exists: Skip schema execution if tables exist
-            insert_samples: Insert sample data after initialization
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        logger.info("=" * 50)
-        logger.info("KIVerdienst v2 Database Initialization")
-        logger.info("=" * 50)
+        logger.info(f"✓ Tables created: {table_count}")
+        logger.info(f"✓ Views created: {view_count}")
+        logger.info(f"✓ System config entries: {config_count}")
         
-        try:
-            # Step 1: Wait for database
-            if not self.wait_for_database():
-                return False
-            
-            # Step 2: Connect
-            if not self.connect():
-                return False
-            
-            # Step 3: Check if tables exist
-            tables_exist = self.check_tables_exist()
-            
-            # Step 4: Run schema if needed
-            if tables_exist and skip_if_exists:
-                logger.info("Tables already exist, skipping schema execution")
-            else:
-                if not self.run_schema_sql():
-                    return False
-            
-            # Step 5: Verify setup
-            if not self.verify_setup():
-                return False
-            
-            # Step 6: Insert sample data (optional)
-            if insert_samples:
-                self.insert_sample_data()
-            
-            logger.info("=" * 50)
-            logger.info("✓ DATABASE INITIALIZATION COMPLETE")
-            logger.info("=" * 50)
-            return True
-            
-        except Exception as e:
-            logger.error(f"Initialization failed: {e}")
-            return False
-        finally:
-            self.close()
+        return table_count >= 9 and view_count >= 2 and config_count > 0
+    except Exception as e:
+        logger.error(f"✗ Verification failed: {e}")
+        return False
 
 
 def main():
-    """Main entry point"""
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='Initialize KIVerdienst v2 Database')
-    parser.add_argument('--force', action='store_true', 
-                       help='Force re-run schema even if tables exist')
-    parser.add_argument('--samples', action='store_true',
-                       help='Insert sample data')
-    parser.add_argument('--check-only', action='store_true',
-                       help='Only check database connectivity')
-    
+    """
+    Main initialization function
+    """
+    parser = argparse.ArgumentParser(description='Initialize KIVerdienst v2 database')
+    parser.add_argument('--samples', action='store_true', help='Load sample data')
+    parser.add_argument('--reset', action='store_true', help='Reset database (WARNING: deletes all data)')
     args = parser.parse_args()
     
+    logger.info("=" * 70)
+    logger.info("KIVerdienst v2 - Database Initialization")
+    logger.info("=" * 70)
+    
+    # Get database connection
+    conn = get_db_connection()
+    
     try:
-        initializer = DatabaseInitializer()
-        
-        if args.check_only:
-            # Just check connection
-            if initializer.wait_for_database():
-                logger.info("✓ Database is accessible")
-                sys.exit(0)
-            else:
-                logger.error("✗ Cannot connect to database")
+        # Reset if requested
+        if args.reset:
+            if not reset_database(conn):
+                logger.error("Failed to reset database")
                 sys.exit(1)
-        else:
-            # Full initialization
-            success = initializer.run(
-                skip_if_exists=not args.force,
-                insert_samples=args.samples
-            )
-            sys.exit(0 if success else 1)
+        
+        # Check if tables already exist
+        if check_tables_exist(conn) and not args.reset:
+            logger.warning("Tables already exist. Use --reset to recreate them.")
             
-    except KeyboardInterrupt:
-        logger.info("\nInterrupted by user")
-        sys.exit(130)
+            # Verify existing installation
+            if verify_installation(conn):
+                logger.info("✓ Database is properly initialized")
+                return
+            else:
+                logger.error("✗ Database verification failed")
+                sys.exit(1)
+        
+        # Get SQL file paths
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        sql_dir = os.path.join(os.path.dirname(script_dir), 'sql')
+        schema_file = os.path.join(sql_dir, 'schema.sql')
+        seed_file = os.path.join(sql_dir, 'seed.sql')
+        
+        # Execute schema
+        logger.info("Creating database schema...")
+        if not execute_sql_file(conn, schema_file):
+            logger.error("Failed to create schema")
+            sys.exit(1)
+        
+        # Execute seed data if requested
+        if args.samples:
+            logger.info("Loading sample data...")
+            if os.path.exists(seed_file):
+                if not execute_sql_file(conn, seed_file):
+                    logger.error("Failed to load sample data")
+                    sys.exit(1)
+            else:
+                logger.warning(f"Seed file not found: {seed_file}")
+        
+        # Verify installation
+        if verify_installation(conn):
+            logger.info("")
+            logger.info("=" * 70)
+            logger.info("✓ Database initialization completed successfully!")
+            logger.info("=" * 70)
+            logger.info("")
+            logger.info("Next steps:")
+            logger.info("  1. Access the web interface at http://YOUR-IP:5000/setup")
+            logger.info("  2. Complete the setup wizard")
+            logger.info("  3. Start creating content!")
+            logger.info("")
+        else:
+            logger.error("✗ Database verification failed")
+            sys.exit(1)
+    
     except Exception as e:
-        logger.error(f"Fatal error: {e}")
+        logger.error(f"✗ Initialization failed: {e}")
         sys.exit(1)
+    
+    finally:
+        conn.close()
 
 
 if __name__ == '__main__':

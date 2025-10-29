@@ -1,589 +1,784 @@
-# KIVerdienst v2 - Docker Setup
+# 🎬 KIVerdienst v2 - Autonomous TikTok Content Generation System
 
-A complete, production-ready Docker setup for KIVerdienst v2 with PostgreSQL, Ollama LLM, FastAPI backend, and Nginx reverse proxy.
+**Production-ready system for automated TikTok content creation with one-command installation and web-based setup wizard.**
+
+---
 
 ## 📋 Table of Contents
 
+- [Overview](#overview)
 - [Features](#features)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
-- [Environment Configuration](#environment-configuration)
-- [Database Setup](#database-setup)
-- [Service Management](#service-management)
+- [System Requirements](#system-requirements)
+- [Installation](#installation)
+- [First-Time Setup](#first-time-setup)
+- [Usage Guide](#usage-guide)
+- [Architecture](#architecture)
 - [API Documentation](#api-documentation)
 - [Troubleshooting](#troubleshooting)
-- [Production Deployment](#production-deployment)
-- [Backup & Recovery](#backup--recovery)
-- [Performance Tuning](#performance-tuning)
+- [Development](#development)
+- [License](#license)
+
+---
+
+## 🎯 Overview
+
+KIVerdienst v2 is a complete, autonomous system for generating and managing TikTok content. It combines AI-powered content creation with automated posting, performance analytics, and brand management - all through an intuitive web interface.
+
+### What Makes It Special?
+
+- **🚀 One-Command Installation** - Get up and running in minutes
+- **🎨 Web-Based Setup Wizard** - No technical knowledge required
+- **📊 Real-Time Dashboard** - Monitor everything in one place
+- **🤖 Fully Automated** - From content creation to posting
+- **🔧 Debug-Friendly** - Built-in tools for troubleshooting
+
+---
 
 ## ✨ Features
 
-- **PostgreSQL 16** - Robust relational database with advanced features
-- **Ollama** - Local LLM inference with llama3.1:70b and llama3.1:8b models
-- **FastAPI** - High-performance Python backend
-- **Nginx** - Reverse proxy with load balancing and SSL support
-- **WebUI** - Modern frontend interface
-- **Health Checks** - Automatic service health monitoring
-- **Persistent Volumes** - Data persistence across container restarts
-- **Logging** - Centralized logging with rotation
-- **Security** - Secure defaults and CORS configuration
+### Core Features
+- ✅ **Automated Video Generation** - AI-powered content creation
+- ✅ **Multi-Brand Management** - Handle multiple brands/channels
+- ✅ **Performance Analytics** - Track views, engagement, and growth
+- ✅ **Posting Scheduler** - Automatic content distribution
+- ✅ **Character System** - Define avatars and personalities
+- ✅ **Script Management** - Create and approve video scripts
 
-## 🏗️ Architecture
+### Technical Features
+- ✅ **Docker-Based** - Fully containerized deployment
+- ✅ **PostgreSQL Database** - Robust data storage
+- ✅ **FastAPI Backend** - High-performance Python API
+- ✅ **Flask Frontend** - Modern, responsive web UI
+- ✅ **Real-Time Logs** - Live system monitoring
+- ✅ **Health Checks** - Automatic service monitoring
+- ✅ **Debug Tools** - Built-in troubleshooting utilities
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Nginx (Port 80)                     │
-│                   Reverse Proxy                         │
-└─────────┬─────────────┬─────────────┬──────────────────┘
-          │             │             │
-          │             │             │
-    ┌─────▼─────┐ ┌────▼─────┐ ┌────▼─────┐
-    │  WebUI    │ │ FastAPI  │ │  Ollama  │
-    │  (3000)   │ │  (8000)  │ │ (11434)  │
-    └───────────┘ └─────┬────┘ └──────────┘
-                        │
-                  ┌─────▼─────┐
-                  │ PostgreSQL│
-                  │  (5432)   │
-                  └───────────┘
-```
-
-## 📦 Prerequisites
-
-### Required Software
-
-- **Docker** >= 20.10
-- **Docker Compose** >= 2.0
-- **Git**
-- **OpenSSL** (for generating secrets)
-
-### Hardware Requirements
-
-**Minimum:**
-- 8 GB RAM
-- 4 CPU cores
-- 50 GB disk space
-
-**Recommended (for llama3.1:70b):**
-- 64 GB RAM
-- 16 CPU cores
-- 500 GB disk space
-- NVIDIA GPU with 48GB+ VRAM (for optimal performance)
-
-### Check Versions
-
-```bash
-docker --version
-docker-compose --version
-git --version
-```
+---
 
 ## 🚀 Quick Start
 
-### 1. Clone or Copy Files
+Get KIVerdienst v2 running in just 3 steps:
 
+### Step 1: Clone or Download
 ```bash
-# If in a git repository
-git clone <repository-url>
+cd /opt
+sudo git clone <repository-url> kiverdienst_v2
 cd kiverdienst_v2
-
-# Or copy all files to /opt/kiverdienst_v2/
-sudo mkdir -p /opt/kiverdienst_v2
-sudo cp -r . /opt/kiverdienst_v2/
-cd /opt/kiverdienst_v2
 ```
 
-### 2. Configure Environment
-
+### Step 2: Run Installer
 ```bash
-# Copy template to .env
-cp .env.template .env
-
-# Generate secure passwords and keys
-export POSTGRES_PASSWORD=$(openssl rand -base64 48)
-export SECRET_KEY=$(openssl rand -hex 64)
-export JWT_SECRET_KEY=$(openssl rand -hex 64)
-
-# Update .env file (Linux/Mac)
-sed -i "s/CHANGE_ME_secure_random_password_here_min_32_chars/$POSTGRES_PASSWORD/g" .env
-sed -i "s/CHANGE_ME_generate_random_secret_key_min_64_chars_hexadecimal/$SECRET_KEY/g" .env
-sed -i "s/CHANGE_ME_another_random_secret_for_jwt_tokens/$JWT_SECRET_KEY/g" .env
-
-# Or edit manually
-nano .env
+sudo ./install.sh
 ```
 
-### 3. Start Services
-
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Check service status
-docker-compose ps
+### Step 3: Open Web Interface
+```
+http://YOUR-SERVER-IP:5000/setup
 ```
 
-### 4. Initialize Database
+That's it! The installer will:
+- ✅ Check and install Docker if needed
+- ✅ Set up all services
+- ✅ Initialize the database
+- ✅ Start all containers
+- ✅ Open your browser to the setup wizard
 
-```bash
-# Run database initialization script
-docker-compose exec fastapi python /opt/kiverdienst_v2/scripts/init_db.py
+**Total Installation Time: 2-5 minutes**
 
-# Or with sample data
-docker-compose exec fastapi python /opt/kiverdienst_v2/scripts/init_db.py --samples
+---
+
+## 💻 System Requirements
+
+### Minimum Requirements
+- **OS:** Ubuntu 20.04+ / Debian 11+ / CentOS 8+
+- **CPU:** 2 cores
+- **RAM:** 4 GB
+- **Disk:** 10 GB free space
+- **Network:** Internet connection for API access
+
+### Recommended
+- **CPU:** 4+ cores
+- **RAM:** 8+ GB
+- **Disk:** 50+ GB SSD
+- **Network:** 100 Mbps+
+
+### Required Software
+- Docker 20.10+
+- Docker Compose 2.0+
+- Git
+- OpenSSL (for key generation)
+
+> **Note:** The installer will automatically install missing dependencies.
+
+---
+
+## 📦 Installation
+
+### Automated Installation (Recommended)
+
+1. **Prepare the System**
+   ```bash
+   # Update system packages
+   sudo apt update && sudo apt upgrade -y
+   
+   # Install git if not present
+   sudo apt install -y git
+   ```
+
+2. **Download KIVerdienst v2**
+   ```bash
+   cd /opt
+   sudo git clone <repository-url> kiverdienst_v2
+   cd kiverdienst_v2
+   ```
+
+3. **Run the Installer**
+   ```bash
+   sudo ./install.sh
+   ```
+
+   The installer will:
+   - Check system requirements
+   - Install Docker and Docker Compose (if missing)
+   - Generate secure passwords
+   - Create environment configuration
+   - Start all services
+   - Initialize the database
+   - Display access URLs
+
+4. **Save Your Credentials**
+   
+   The installer will display generated passwords. **Save these immediately!**
+   
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PostgreSQL Password: [generated]
+   Secret Key: [generated]
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+### Manual Installation
+
+If you prefer manual installation:
+
+1. **Install Dependencies**
+   ```bash
+   ./scripts/check_dependencies.sh
+   ```
+
+2. **Configure Environment**
+   ```bash
+   cp .env.template .env
+   nano .env  # Edit with your values
+   ```
+
+3. **Start Services**
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Initialize Database**
+   ```bash
+   docker compose exec backend python scripts/init_db.py
+   ```
+
+---
+
+## 🎨 First-Time Setup
+
+After installation, open your browser to start the setup wizard:
+
+```
+http://YOUR-SERVER-IP:5000/setup
 ```
 
-### 5. Verify Installation
+### Setup Wizard Steps
 
-```bash
-# Check all services are healthy
-docker-compose ps
+#### Step 1: Welcome
+- Introduction to KIVerdienst v2
+- Overview of features
 
-# Test API
-curl http://localhost/api/health
+#### Step 2: System Check
+- Database connection test
+- Docker containers status
+- Disk space verification
 
-# Test Ollama
-curl http://localhost/ollama/api/tags
+#### Step 3: Configuration
+- Enter administrator email
+- Add API keys (optional):
+  - OpenAI API Key
+  - ElevenLabs API Key
+  - Replicate API Token
 
-# Access WebUI
-# Open browser: http://localhost
+> **Tip:** You can skip API keys during setup and add them later through the dashboard.
+
+#### Step 4: Complete
+- Review configuration
+- Access the main dashboard
+
+---
+
+## 📖 Usage Guide
+
+### Dashboard Overview
+
+The dashboard provides:
+- **System Status** - Health of all services
+- **Brand Statistics** - Active brands and content
+- **Video Performance** - Total views, engagement
+- **Quick Actions** - Common tasks
+
+### Creating Your First Brand
+
+1. **Navigate to Brands**
+   ```
+   Dashboard → Brands → Create New Brand
+   ```
+
+2. **Fill in Details**
+   - **Name:** Your brand name
+   - **Niche:** Content category (Tech, Fitness, Cooking, etc.)
+   - **Tonality:** Voice and style
+   - **Target Audience:** Who you're creating for
+   - **Social Accounts:** TikTok, Instagram, YouTube handles
+
+3. **Save and Activate**
+
+### Managing Brands
+
+- **View All Brands** - See all your content brands
+- **Edit Brand** - Update settings and accounts
+- **Pause/Activate** - Control content generation
+- **Delete Brand** - Remove with all related data
+
+### Viewing Logs
+
+Real-time system logs are available at:
+```
+http://YOUR-SERVER-IP:5000/logs
 ```
 
-## ⚙️ Environment Configuration
+Features:
+- Filter by log level (Info, Warning, Error)
+- Filter by component
+- Auto-refresh every 5 seconds
+- Search logs
 
-### Critical Variables
+### Debug Tools
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `POSTGRES_PASSWORD` | Database password | - | ✅ |
-| `POSTGRES_USER` | Database username | kiverdienst | ✅ |
-| `POSTGRES_DB` | Database name | kiverdienst_v2 | ✅ |
-| `SECRET_KEY` | Application secret key | - | ✅ |
-| `OLLAMA_HOST` | Ollama API endpoint | http://ollama:11434 | ✅ |
-| `API_PORT` | FastAPI port | 8000 | ✅ |
-
-### Generating Secrets
-
-```bash
-# PostgreSQL password (48 bytes, base64)
-openssl rand -base64 48
-
-# Application secret key (64 bytes, hex)
-openssl rand -hex 64
-
-# JWT secret key (64 bytes, hex)
-openssl rand -hex 64
+Access debug tools at:
+```
+http://YOUR-SERVER-IP:5000/debug
 ```
 
-## 🗄️ Database Setup
+Available tools:
+- Service health status
+- Docker container status
+- Port checker
+- Database connection test
+- API tests
+- Service restart buttons
 
-### Schema Information
+---
 
-The database includes:
-- **9 tables**: brands, characters, character_clips, video_scripts, videos, performance_analytics, products, posting_schedule, system_config
-- **35+ indexes** for optimal query performance
-- **8 triggers** for automatic timestamp updates
-- **2 views** for analytics
-- **Foreign keys** with cascade rules
+## 🏗️ Architecture
 
-### Manual Schema Execution
+### System Components
 
-```bash
-# Connect to database
-docker-compose exec postgres psql -U kiverdienst -d kiverdienst_v2
-
-# Run schema
-\i /docker-entrypoint-initdb.d/schema.sql
-
-# Verify tables
-\dt
-
-# Check table structure
-\d brands
+```
+┌─────────────────────────────────────────────────────┐
+│                    Nginx (Port 80)                  │
+│                  Reverse Proxy                      │
+└───────────┬─────────────┬───────────────────────────┘
+            │             │
+    ┌───────▼──────┐ ┌───▼──────────┐
+    │   Frontend   │ │   Backend    │
+    │  (Flask)     │ │   (FastAPI)  │
+    │  Port 5000   │ │   Port 8000  │
+    └──────────────┘ └───────┬──────┘
+                             │
+                      ┌──────▼──────┐
+                      │  PostgreSQL │
+                      │  Port 5432  │
+                      └─────────────┘
 ```
 
-### Database Backup
+### Technology Stack
 
-```bash
-# Backup database
-docker-compose exec postgres pg_dump -U kiverdienst kiverdienst_v2 > backup_$(date +%Y%m%d_%H%M%S).sql
+**Backend:**
+- FastAPI 0.109.0
+- SQLAlchemy 2.0
+- PostgreSQL 16
+- Uvicorn
 
-# Restore database
-docker-compose exec -T postgres psql -U kiverdienst kiverdienst_v2 < backup_20240101_120000.sql
-```
+**Frontend:**
+- Flask 3.0
+- Vanilla JavaScript
+- Custom CSS (utility-first)
+- No build step required
 
-## 🔧 Service Management
+**Infrastructure:**
+- Docker & Docker Compose
+- Nginx (optional, for production)
+- PostgreSQL with connection pooling
 
-### Docker Compose Commands
+### Database Schema
 
-```bash
-# Start services
-docker-compose up -d
+**Main Tables:**
+- `brands` - Brand/channel information
+- `characters` - Avatar definitions
+- `video_scripts` - Generated scripts
+- `videos` - Produced videos
+- `performance_analytics` - Metrics and stats
+- `posting_schedule` - Posting times
+- `system_logs` - System events
+- `system_config` - Configuration
+- `products` - Affiliate products
 
-# Stop services
-docker-compose stop
+**Views:**
+- `brand_performance` - Aggregated brand stats
+- `recent_activity` - Latest system activity
 
-# Restart services
-docker-compose restart
-
-# Stop and remove containers
-docker-compose down
-
-# Remove everything (including volumes)
-docker-compose down -v
-
-# View logs
-docker-compose logs -f [service_name]
-
-# Execute commands in containers
-docker-compose exec [service_name] [command]
-
-# Rebuild containers
-docker-compose build --no-cache
-docker-compose up -d
-```
-
-### Individual Service Management
-
-```bash
-# Restart specific service
-docker-compose restart postgres
-docker-compose restart fastapi
-docker-compose restart ollama
-docker-compose restart nginx
-
-# View service logs
-docker-compose logs -f postgres
-docker-compose logs -f fastapi --tail=100
-
-# Check service health
-docker-compose exec postgres pg_isready -U kiverdienst
-docker-compose exec ollama ollama list
-```
-
-### Ollama Model Management
-
-```bash
-# List installed models
-docker-compose exec ollama ollama list
-
-# Pull a new model
-docker-compose exec ollama ollama pull llama3.1:8b
-
-# Remove a model
-docker-compose exec ollama ollama rm llama3.1:8b
-
-# Test model
-docker-compose exec ollama ollama run llama3.1:8b "Hello, how are you?"
-```
+---
 
 ## 📚 API Documentation
 
-### Endpoints
+### Interactive Documentation
+
+Access the interactive API documentation:
+- **Swagger UI:** `http://YOUR-SERVER-IP:8000/docs`
+- **ReDoc:** `http://YOUR-SERVER-IP:8000/redoc`
+
+### Main Endpoints
 
 #### Health Check
 ```bash
-GET /health
-curl http://localhost/health
+GET /api/health
 ```
 
-#### API Routes
+#### Setup
 ```bash
-# All API endpoints are prefixed with /api/
-GET /api/brands
-POST /api/videos
-GET /api/analytics
+GET  /api/setup/status      # Check setup status
+POST /api/setup/init        # Initialize system
+POST /api/setup/complete    # Mark setup complete
 ```
 
-#### Ollama Routes
+#### Brands
 ```bash
-# All Ollama endpoints are prefixed with /ollama/
-GET /ollama/api/tags
-POST /ollama/api/generate
+GET    /api/brands              # List all brands
+POST   /api/brands              # Create brand
+GET    /api/brands/{id}         # Get brand
+PUT    /api/brands/{id}         # Update brand
+DELETE /api/brands/{id}         # Delete brand
+PATCH  /api/brands/{id}/status  # Toggle status
 ```
 
-### FastAPI Swagger Docs
+#### System
+```bash
+GET  /api/system/health    # System health
+GET  /api/system/stats     # Statistics
+GET  /api/system/docker    # Docker status
+POST /api/system/restart/{service}  # Restart service
+```
 
-Access interactive API documentation:
-- Swagger UI: `http://localhost/api/docs`
-- ReDoc: `http://localhost/api/redoc`
+#### Debug
+```bash
+GET    /api/debug/logs        # Get logs
+DELETE /api/debug/logs        # Clear logs
+GET    /api/debug/database    # Test database
+POST   /api/debug/test-api    # Test APIs
+GET    /api/debug/ports       # Check ports
+```
 
-## 🔍 Troubleshooting
+---
+
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-#### 1. Database Connection Failed
+#### 1. Installation Fails
 
-**Symptoms:** FastAPI can't connect to PostgreSQL
-
-**Solutions:**
-```bash
-# Check if PostgreSQL is running
-docker-compose ps postgres
-
-# Check PostgreSQL logs
-docker-compose logs postgres
-
-# Verify credentials in .env
-cat .env | grep POSTGRES
-
-# Test connection manually
-docker-compose exec postgres psql -U kiverdienst -d kiverdienst_v2 -c "SELECT 1"
-
-# Restart PostgreSQL
-docker-compose restart postgres
-```
-
-#### 2. Ollama Models Not Loading
-
-**Symptoms:** Ollama returns empty model list
+**Problem:** Installer stops with errors
 
 **Solutions:**
 ```bash
-# Check Ollama logs
-docker-compose logs ollama
+# Check system requirements
+./scripts/check_dependencies.sh
 
-# Manually pull models
-docker-compose exec ollama ollama pull llama3.1:8b
-docker-compose exec ollama ollama pull llama3.1:70b
+# Check Docker status
+sudo systemctl status docker
 
-# Check disk space
-docker-compose exec ollama df -h
-
-# Restart Ollama
-docker-compose restart ollama
+# View installer logs
+sudo journalctl -u docker -n 50
 ```
 
-#### 3. Nginx 502 Bad Gateway
+#### 2. Can't Access Web Interface
 
-**Symptoms:** Cannot access services through Nginx
+**Problem:** Browser can't connect to port 5000
 
 **Solutions:**
 ```bash
-# Check Nginx logs
-docker-compose logs nginx
+# Check if services are running
+docker compose ps
 
-# Verify backend services are running
-docker-compose ps
+# Check frontend logs
+docker compose logs frontend
 
-# Test FastAPI directly
-curl http://localhost:8000/health
-
-# Check Nginx configuration
-docker-compose exec nginx nginx -t
-
-# Restart Nginx
-docker-compose restart nginx
+# Check firewall
+sudo ufw allow 5000
 ```
 
-#### 4. Permission Denied
+#### 3. Database Connection Errors
 
-**Symptoms:** Cannot create volumes or mount directories
+**Problem:** "Database connection failed"
 
 **Solutions:**
 ```bash
-# Check directory permissions
-ls -la /opt/kiverdienst_v2
+# Check PostgreSQL status
+docker compose logs postgres
 
-# Fix permissions
-sudo chown -R $USER:$USER /opt/kiverdienst_v2
-sudo chmod -R 755 /opt/kiverdienst_v2
+# Verify database is ready
+docker compose exec postgres pg_isready -U kiverdienst
 
-# Check Docker socket permissions
-sudo chmod 666 /var/run/docker.sock
+# Restart database
+docker compose restart postgres
 ```
 
-#### 5. Out of Memory
+#### 4. Docker Issues
 
-**Symptoms:** Services crashing, slow performance
+**Problem:** Containers not starting
 
 **Solutions:**
 ```bash
-# Check memory usage
-docker stats
+# Check Docker daemon
+sudo systemctl restart docker
 
-# Increase Docker memory limit
-# Edit Docker Desktop settings or /etc/docker/daemon.json
+# Rebuild containers
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 
-# Use smaller Ollama model
-docker-compose exec ollama ollama pull llama3.1:8b
-
-# Stop unused containers
-docker stop $(docker ps -q)
+# Check for port conflicts
+./scripts/check_dependencies.sh
 ```
 
-### Debug Mode
+### Health Check Script
 
-Enable debug logging:
-
+Run the health check to diagnose issues:
 ```bash
-# Edit .env
-DEBUG=true
-LOG_LEVEL=DEBUG
-
-# Restart services
-docker-compose restart
+./scripts/health_check.sh
 ```
 
-### View Container Stats
-
-```bash
-# Real-time stats
-docker stats
-
-# Disk usage
-docker system df
-
-# Volume inspection
-docker volume inspect kiverdienst_postgres_data
-```
-
-## 🚀 Production Deployment
-
-### Security Checklist
-
-- [ ] Change all default passwords
-- [ ] Use strong SECRET_KEY and JWT_SECRET_KEY
-- [ ] Enable SSL/TLS (configure Nginx HTTPS)
-- [ ] Set `DEBUG=false` in .env
-- [ ] Configure firewall rules
-- [ ] Use Docker secrets for sensitive data
-- [ ] Enable log rotation
-- [ ] Set up monitoring and alerts
-- [ ] Configure automated backups
-- [ ] Use non-root users in containers
-
-### SSL/TLS Setup
-
-```bash
-# Generate self-signed certificate (development)
-mkdir -p docker/ssl
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout docker/ssl/key.pem \
-  -out docker/ssl/cert.pem
-
-# For production, use Let's Encrypt
-# Uncomment HTTPS block in docker/nginx.conf
-```
-
-### Monitoring
-
-```bash
-# Install monitoring tools
-docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
-
-# Access Prometheus: http://localhost:9090
-# Access Grafana: http://localhost:3001
-```
-
-## 💾 Backup & Recovery
-
-### Automated Backups
-
-```bash
-# Create backup script
-cat > backup.sh << 'EOF'
-#!/bin/bash
-BACKUP_DIR="/backups"
-DATE=$(date +%Y%m%d_%H%M%S)
-docker-compose exec -T postgres pg_dump -U kiverdienst kiverdienst_v2 | gzip > $BACKUP_DIR/db_$DATE.sql.gz
-find $BACKUP_DIR -name "db_*.sql.gz" -mtime +30 -delete
-EOF
-
-chmod +x backup.sh
-
-# Add to crontab (daily at 2 AM)
-echo "0 2 * * * /opt/kiverdienst_v2/backup.sh" | crontab -
-```
-
-### Volume Backup
-
-```bash
-# Backup all volumes
-docker run --rm -v kiverdienst_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/postgres_data.tar.gz -C /data .
-docker run --rm -v kiverdienst_ollama_data:/data -v $(pwd):/backup alpine tar czf /backup/ollama_data.tar.gz -C /data .
-```
-
-### Recovery
-
-```bash
-# Restore database
-gunzip < db_20240101_120000.sql.gz | docker-compose exec -T postgres psql -U kiverdienst kiverdienst_v2
-
-# Restore volumes
-docker run --rm -v kiverdienst_postgres_data:/data -v $(pwd):/backup alpine tar xzf /backup/postgres_data.tar.gz -C /data
-```
-
-## ⚡ Performance Tuning
-
-### PostgreSQL Optimization
-
-```bash
-# Edit PostgreSQL config
-docker-compose exec postgres bash -c "cat >> /var/lib/postgresql/data/postgresql.conf << EOF
-shared_buffers = 256MB
-effective_cache_size = 1GB
-maintenance_work_mem = 64MB
-checkpoint_completion_target = 0.9
-wal_buffers = 16MB
-default_statistics_target = 100
-random_page_cost = 1.1
-effective_io_concurrency = 200
-work_mem = 8MB
-EOF"
-
-# Restart PostgreSQL
-docker-compose restart postgres
-```
-
-### Nginx Optimization
-
-- Already configured with:
-  - Gzip compression
-  - Connection pooling (keepalive)
-  - Rate limiting
-  - Caching headers
-  - Buffer tuning
-
-### Ollama Optimization
-
-```bash
-# Use GPU acceleration (if available)
-# Edit docker-compose.yml to ensure GPU is enabled
-
-# Use smaller model for faster inference
-OLLAMA_MODEL_PRIMARY=llama3.1:8b
-```
-
-## 📞 Support
+This will check:
+- ✅ Docker daemon status
+- ✅ Container status
+- ✅ Database connectivity
+- ✅ Web services
+- ✅ Resource usage
+- ✅ Recent errors
 
 ### Getting Help
 
-1. Check logs: `docker-compose logs -f`
-2. Review this README
-3. Check [Troubleshooting](#troubleshooting) section
-4. Review individual service documentation
+1. **Check Logs**
+   ```bash
+   # All services
+   docker compose logs -f
+   
+   # Specific service
+   docker compose logs -f backend
+   docker compose logs -f frontend
+   docker compose logs -f postgres
+   ```
 
-### Useful Links
+2. **Check Service Status**
+   ```bash
+   docker compose ps
+   ```
 
-- [Docker Documentation](https://docs.docker.com/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Ollama Documentation](https://ollama.ai/docs)
-- [Nginx Documentation](https://nginx.org/en/docs/)
+3. **Restart Services**
+   ```bash
+   docker compose restart
+   ```
+
+4. **Full Reset** (⚠️ Deletes all data)
+   ```bash
+   docker compose down -v
+   ./install.sh --reset
+   ```
+
+---
+
+## 🛠️ Development
+
+### Running in Development Mode
+
+1. **Set Debug Mode**
+   ```bash
+   # Edit .env
+   DEBUG=true
+   LOG_LEVEL=DEBUG
+   ```
+
+2. **Start Services**
+   ```bash
+   docker compose up
+   ```
+
+3. **Access Services**
+   - Frontend: http://localhost:5000
+   - Backend: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
+
+### Project Structure
+
+```
+kiverdienst_v2/
+├── install.sh              # One-command installer
+├── docker-compose.yml      # Docker services
+├── .env.template           # Environment template
+├── README.md               # This file
+│
+├── backend/                # FastAPI Backend
+│   ├── main.py
+│   ├── database.py
+│   ├── models.py
+│   └── routes/
+│       ├── setup.py
+│       ├── brands.py
+│       ├── system.py
+│       └── debug.py
+│
+├── frontend/               # Flask Frontend
+│   ├── app.py
+│   ├── static/
+│   │   ├── css/
+│   │   └── js/
+│   └── templates/
+│
+├── sql/
+│   ├── schema.sql
+│   └── seed.sql
+│
+└── scripts/
+    ├── check_dependencies.sh
+    ├── init_db.py
+    └── health_check.sh
+```
+
+### Making Changes
+
+1. **Backend Changes**
+   - Edit files in `backend/`
+   - FastAPI auto-reloads in debug mode
+   - Test at http://localhost:8000/docs
+
+2. **Frontend Changes**
+   - Edit templates in `frontend/templates/`
+   - Edit CSS in `frontend/static/css/`
+   - Edit JS in `frontend/static/js/`
+   - Refresh browser to see changes
+
+3. **Database Changes**
+   - Edit `sql/schema.sql`
+   - Reset database:
+     ```bash
+     docker compose exec backend python scripts/init_db.py --reset
+     ```
+
+---
+
+## 🚦 Service Management
+
+### Starting Services
+```bash
+# Start all services
+docker compose up -d
+
+# Start specific service
+docker compose up -d backend
+```
+
+### Stopping Services
+```bash
+# Stop all services
+docker compose stop
+
+# Stop specific service
+docker compose stop backend
+```
+
+### Restarting Services
+```bash
+# Restart all services
+docker compose restart
+
+# Restart specific service
+docker compose restart backend
+```
+
+### Viewing Logs
+```bash
+# Follow all logs
+docker compose logs -f
+
+# Last 100 lines
+docker compose logs --tail=100 backend
+
+# Specific service
+docker compose logs -f frontend
+```
+
+### Updating Services
+```bash
+# Pull latest changes
+git pull
+
+# Rebuild and restart
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
+
+---
+
+## 📊 Monitoring & Maintenance
+
+### Regular Maintenance Tasks
+
+**Daily:**
+- Check system health via dashboard
+- Review error logs
+- Monitor disk space
+
+**Weekly:**
+- Review performance analytics
+- Check database size
+- Update system packages
+
+**Monthly:**
+- Backup database
+- Review API usage
+- Clean old logs
+
+### Backup & Restore
+
+**Backup Database:**
+```bash
+docker compose exec -T postgres pg_dump -U kiverdienst kiverdienst_v2 > backup_$(date +%Y%m%d).sql
+```
+
+**Restore Database:**
+```bash
+docker compose exec -T postgres psql -U kiverdienst kiverdienst_v2 < backup_20240101.sql
+```
+
+**Backup Volumes:**
+```bash
+docker run --rm -v kiverdienst_postgres_data:/data -v $(pwd):/backup \
+  alpine tar czf /backup/postgres_data.tar.gz -C /data .
+```
+
+---
+
+## 🔒 Security
+
+### Best Practices
+
+1. **Change Default Passwords**
+   - Use strong, unique passwords
+   - Store securely (password manager)
+
+2. **Enable Firewall**
+   ```bash
+   sudo ufw allow 22    # SSH
+   sudo ufw allow 80    # HTTP
+   sudo ufw allow 443   # HTTPS
+   sudo ufw allow 5000  # Frontend (if not using nginx)
+   sudo ufw enable
+   ```
+
+3. **Keep System Updated**
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   docker compose pull
+   docker compose up -d
+   ```
+
+4. **Use HTTPS**
+   - Configure SSL certificates
+   - Use Let's Encrypt for free certificates
+   - Enable HTTPS in nginx configuration
+
+5. **Regular Backups**
+   - Automated daily backups
+   - Store backups off-site
+   - Test restore procedures
+
+---
+
+## 📞 Support
+
+### Resources
+
+- **Documentation:** This README
+- **API Docs:** http://YOUR-IP:8000/docs
+- **Debug Tools:** http://YOUR-IP:5000/debug
+- **Logs Viewer:** http://YOUR-IP:5000/logs
+
+### Useful Commands
+
+```bash
+# Check system health
+./scripts/health_check.sh
+
+# Check dependencies
+./scripts/check_dependencies.sh
+
+# View all containers
+docker compose ps
+
+# View logs
+docker compose logs -f
+
+# Restart everything
+docker compose restart
+
+# Full reset
+docker compose down -v && ./install.sh
+```
+
+---
 
 ## 📝 License
 
 [Your License Here]
 
-## 🤝 Contributing
+---
 
-[Your Contributing Guidelines Here]
+## 🙏 Acknowledgments
+
+Built with:
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [Flask](https://flask.palletsprojects.com/)
+- [PostgreSQL](https://www.postgresql.org/)
+- [Docker](https://www.docker.com/)
+
+---
+
+## 📈 Changelog
+
+### Version 2.0.0 (Current)
+- ✅ Complete system rewrite
+- ✅ One-command installation
+- ✅ Web-based setup wizard
+- ✅ Modern UI with real-time updates
+- ✅ Comprehensive debug tools
+- ✅ Docker-based deployment
+- ✅ Production-ready architecture
 
 ---
 
 **KIVerdienst v2** - Built with ❤️ for content creators
+
+Ready to start? Run `./install.sh` and visit http://YOUR-IP:5000/setup 🚀

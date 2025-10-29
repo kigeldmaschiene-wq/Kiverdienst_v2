@@ -5,195 +5,109 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: kiverdienst_postgres
+    restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER:-kiverdienst}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB:-kiverdienst_v2}
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-    ports:
-      - "5432:5432"
-    networks:
-      - kiverdienst_network
-    restart: always
+      - ./sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kiverdienst}"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Ollama Service with LLM Models
-  ollama:
-    image: ollama/ollama:latest
-    container_name: kiverdienst_ollama
-    volumes:
-      - ollama_data:/root/.ollama
-    ports:
-      - "11434:11434"
     networks:
       - kiverdienst_network
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "3"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-
-  # Ollama Model Puller (pulls models on startup)
-  ollama-setup:
-    image: ollama/ollama:latest
-    container_name: kiverdienst_ollama_setup
-    depends_on:
-      ollama:
-        condition: service_healthy
-    networks:
-      - kiverdienst_network
-    environment:
-      - OLLAMA_HOST=http://ollama:11434
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        echo "Waiting for Ollama to be ready..."
-        sleep 10
-        echo "Pulling llama3.1:70b model..."
-        ollama pull llama3.1:70b --host http://ollama:11434 || echo "Failed to pull llama3.1:70b"
-        echo "Pulling llama3.1:8b model..."
-        ollama pull llama3.1:8b --host http://ollama:11434 || echo "Failed to pull llama3.1:8b"
-        echo "Models pulled successfully!"
-    restart: "no"
 
   # FastAPI Backend
-  fastapi:
+  backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: kiverdienst_fastapi
+    container_name: kiverdienst_backend
+    restart: always
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - OLLAMA_HOST=${OLLAMA_HOST}
-      - SECRET_KEY=${SECRET_KEY}
-      - API_PORT=${API_PORT}
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN:-}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
     ports:
-      - "${API_PORT}:${API_PORT}"
+      - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
-      - media_data:/app/media
-    networks:
-      - kiverdienst_network
+      - ./scripts:/app/scripts
+      - ./sql:/app/sql
     depends_on:
       postgres:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
-    restart: always
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${API_PORT}/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    networks:
+      - kiverdienst_network
 
-  # WebUI (Frontend)
-  webui:
+  # Flask Frontend
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: kiverdienst_webui
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    networks:
-      - kiverdienst_network
-    depends_on:
-      - fastapi
+    container_name: kiverdienst_frontend
     restart: always
     environment:
-      - NEXT_PUBLIC_API_URL=http://nginx/api
+      BACKEND_URL: http://backend:8000
+      SECRET_KEY: ${SECRET_KEY}
+      FLASK_ENV: ${DEBUG:-false}
+    ports:
+      - "${FRONTEND_PORT:-5000}:5000"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      start_period: 40s
+    networks:
+      - kiverdienst_network
 
-  # Nginx Reverse Proxy
+  # Nginx Reverse Proxy (Optional - for production)
   nginx:
     image: nginx:alpine
     container_name: kiverdienst_nginx
+    restart: always
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/ssl:/etc/nginx/ssl:ro
-      - nginx_logs:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
     networks:
       - kiverdienst_network
-    depends_on:
-      - fastapi
-      - webui
-    restart: always
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-networks:
-  kiverdienst_network:
-    driver: bridge
-    name: kiverdienst_network
+    profiles:
+      - production
 
 volumes:
   postgres_data:
     driver: local
-    name: kiverdienst_postgres_data
-  ollama_data:
-    driver: local
-    name: kiverdienst_ollama_data
-  media_data:
-    driver: local
-    name: kiverdienst_media_data
-  nginx_logs:
-    driver: local
-    name: kiverdienst_nginx_logs
+
+networks:
+  kiverdienst_network:
+    driver: bridge

@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - KIVerdienst v2{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="page-header">
+        <h1>Dashboard</h1>
+        <p>Übersicht über Ihr KIVerdienst v2 System</p>
+    </div>
+
+    <!-- System Status Cards -->
+    <div class="status-cards">
+        <div class="status-card {% if health.overall == 'healthy' %}status-success{% else %}status-warning{% endif %}">
+            <div class="status-icon">
+                {% if health.overall == 'healthy' %}✅{% else %}⚠️{% endif %}
+            </div>
+            <div class="status-info">
+                <h3>System Status</h3>
+                <p class="status-value">{{ health.overall|default('Unbekannt') }}</p>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <div class="status-icon">🏢</div>
+            <div class="status-info">
+                <h3>Brands</h3>
+                <p class="status-value">{{ stats.brands.active|default(0) }} / {{ stats.brands.total|default(0) }}</p>
+                <p class="status-label">Aktiv / Gesamt</p>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <div class="status-icon">🎬</div>
+            <div class="status-info">
+                <h3>Videos</h3>
+                <p class="status-value">{{ stats.videos.posted|default(0) }} / {{ stats.videos.total|default(0) }}</p>
+                <p class="status-label">Gepostet / Gesamt</p>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <div class="status-icon">📝</div>
+            <div class="status-info">
+                <h3>Scripts</h3>
+                <p class="status-value">{{ stats.scripts.approved|default(0) }} / {{ stats.scripts.total|default(0) }}</p>
+                <p class="status-label">Genehmigt / Gesamt</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Health -->
+    <div class="section">
+        <h2>Dienste</h2>
+        <div class="services-grid">
+            {% if health.services %}
+                {% for service_name, service in health.services.items() %}
+                <div class="service-card">
+                    <div class="service-header">
+                        <span class="service-name">{{ service_name|title }}</span>
+                        <span class="badge {% if service.status == 'healthy' %}badge-success{% else %}badge-error{% endif %}">
+                            {{ service.status }}
+                        </span>
+                    </div>
+                    <p class="service-message">{{ service.message }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted">Keine Dienst-Informationen verfügbar</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section">
+        <h2>Schnellaktionen</h2>
+        <div class="actions-grid">
+            <a href="/brands" class="action-card">
+                <span class="action-icon">➕</span>
+                <h3>Neue Brand erstellen</h3>
+                <p>Starten Sie mit einer neuen Brand</p>
+            </a>
+            
+            <a href="/logs" class="action-card">
+                <span class="action-icon">📋</span>
+                <h3>Logs anzeigen</h3>
+                <p>System-Logs in Echtzeit</p>
+            </a>
+            
+            <a href="/debug" class="action-card">
+                <span class="action-icon">🔧</span>
+                <h3>Debug-Tools</h3>
+                <p>Systemdiagnose und Tests</p>
+            </a>
+            
+            <a href="/api/docs" target="_blank" class="action-card">
+                <span class="action-icon">📚</span>
+                <h3>API Dokumentation</h3>
+                <p>Swagger API Docs</p>
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="section">
+        <h2>Letzte Aktivitäten</h2>
+        <div class="activity-list" id="recent-activity">
+            <p class="text-muted">Lädt Aktivitäten...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh dashboard every 30 seconds
+    let refreshInterval;
+
+    function startAutoRefresh() {
+        refreshInterval = setInterval(() => {
+            window.location.reload();
+        }, 30000);
+    }
+
+    // Load recent activity
+    async function loadRecentActivity() {
+        try {
+            const response = await fetch('/api/debug/logs?limit=10');
+            const data = await response.json();
+            
+            const activityList = document.getElementById('recent-activity');
+            
+            if (data.logs && data.logs.length > 0) {
+                activityList.innerHTML = data.logs.map(log => `
+                    <div class="activity-item">
+                        <span class="badge badge-${getBadgeClass(log.level)}">${log.level}</span>
+                        <span class="activity-component">${log.component}</span>
+                        <span class="activity-message">${log.message}</span>
+                        <span class="activity-time">${formatTimeAgo(log.created_at)}</span>
+                    </div>
+                `).join('');
+            } else {
+                activityList.innerHTML = '<p class="text-muted">Keine Aktivitäten vorhanden</p>';
+            }
+        } catch (error) {
+            console.error('Error loading activity:', error);
+        }
+    }
+
+    function getBadgeClass(level) {
+        const classes = {
+            'ERROR': 'error',
+            'WARNING': 'warning',
+            'INFO': 'info',
+            'DEBUG': 'secondary'
+        };
+        return classes[level] || 'secondary';
+    }
+
+    function formatTimeAgo(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+        
+        if (seconds < 60) return 'gerade eben';
+        if (seconds < 3600) return `vor ${Math.floor(seconds / 60)} Min.`;
+        if (seconds < 86400) return `vor ${Math.floor(seconds / 3600)} Std.`;
+        return `vor ${Math.floor(seconds / 86400)} Tagen`;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        loadRecentActivity();
+        startAutoRefresh();
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (refreshInterval) clearInterval(refreshInterval);
+    });
+</script>
+{% endblock %}

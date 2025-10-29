@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Debug - KIVerdienst v2{% endblock %}
+
+{% block content %}
+<div class="debug-page">
+    <div class="page-header">
+        <h1>Debug & Systemdiagnose</h1>
+        <p>Überwachen und testen Sie Systemkomponenten</p>
+    </div>
+
+    <!-- System Health Overview -->
+    <div class="section">
+        <h2>System-Status</h2>
+        <div class="health-grid">
+            {% if health.services %}
+                {% for service_name, service in health.services.items() %}
+                <div class="health-card {% if service.status == 'healthy' %}health-success{% else %}health-error{% endif %}">
+                    <div class="health-indicator"></div>
+                    <div class="health-info">
+                        <h3>{{ service_name|title }}</h3>
+                        <p class="status-text">{{ service.status }}</p>
+                        <p class="status-message">{{ service.message }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Docker Containers -->
+    <div class="section">
+        <h2>Docker Container</h2>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Container</th>
+                        <th>Status</th>
+                        <th>Image</th>
+                        <th>ID</th>
+                    </tr>
+                </thead>
+                <tbody id="docker-table">
+                    {% if docker.success and docker.containers %}
+                        {% for container in docker.containers %}
+                        <tr>
+                            <td>{{ container.name }}</td>
+                            <td>
+                                <span class="badge badge-{{ 'success' if container.status == 'running' else 'error' }}">
+                                    {{ container.status }}
+                                </span>
+                            </td>
+                            <td>{{ container.image }}</td>
+                            <td><code>{{ container.id }}</code></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Keine Container-Informationen verfügbar</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <button class="btn btn-secondary" onclick="refreshDockerStatus()">
+            <span>🔄</span> Aktualisieren
+        </button>
+    </div>
+
+    <!-- Port Status -->
+    <div class="section">
+        <h2>Port-Status</h2>
+        <div class="ports-grid">
+            {% if ports.success and ports.ports %}
+                {% for service, port_info in ports.ports.items() %}
+                <div class="port-card">
+                    <div class="port-header">
+                        <span class="port-service">{{ service }}</span>
+                        <span class="badge badge-{{ 'success' if port_info.in_use else 'secondary' }}">
+                            Port {{ port_info.port }}
+                        </span>
+                    </div>
+                    <p class="port-status">{{ port_info.status }}</p>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Database Info -->
+    <div class="section">
+        <h2>Datenbank</h2>
+        <div class="info-card">
+            {% if database.success %}
+                <div class="info-row">
+                    <span class="info-label">Status:</span>
+                    <span class="badge badge-success">Verbunden</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Datenbank:</span>
+                    <span class="info-value">{{ database.database_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Größe:</span>
+                    <span class="info-value">{{ database.database_size }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Tabellen:</span>
+                    <span class="info-value">{{ database.table_count }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Version:</span>
+                    <span class="info-value"><code>{{ database.version[:50] }}...</code></span>
+                </div>
+            {% else %}
+                <div class="alert alert-error">
+                    <strong>Fehler:</strong> {{ database.message }}
+                </div>
+            {% endif %}
+        </div>
+        <button class="btn btn-secondary" onclick="testDatabase()">
+            <span>🔍</span> Verbindung testen
+        </button>
+    </div>
+
+    <!-- API Tests -->
+    <div class="section">
+        <h2>API-Tests</h2>
+        <div class="test-actions">
+            <button class="btn btn-primary" onclick="testExternalAPIs()">
+                <span>🔌</span> Externe APIs testen
+            </button>
+            <button class="btn btn-secondary" onclick="checkEnvironment()">
+                <span>📋</span> Umgebungsvariablen anzeigen
+            </button>
+            <button class="btn btn-warning" onclick="clearLogs()">
+                <span>🗑️</span> Logs löschen
+            </button>
+        </div>
+        
+        <div id="test-results" class="test-results" style="display: none;">
+            <h3>Test-Ergebnisse</h3>
+            <pre id="test-output"></pre>
+        </div>
+    </div>
+
+    <!-- Service Management -->
+    <div class="section">
+        <h2>Dienste verwalten</h2>
+        <div class="service-actions">
+            <div class="alert alert-warning">
+                <strong>⚠️ Achtung:</strong> Das Neustarten von Diensten kann zu kurzen Unterbrechungen führen.
+            </div>
+            
+            <div class="service-buttons">
+                <button class="btn btn-secondary" onclick="restartService('backend')">
+                    Backend neu starten
+                </button>
+                <button class="btn btn-secondary" onclick="restartService('frontend')">
+                    Frontend neu starten
+                </button>
+                <button class="btn btn-secondary" onclick="restartService('postgres')">
+                    Datenbank neu starten
+                </button>
+                <button class="btn btn-secondary" onclick="restartService('nginx')">
+                    Nginx neu starten
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function refreshDockerStatus() {
+        try {
+            const response = await fetch('/api/system/docker');
+            const data = await response.json();
+            
+            const tbody = document.getElementById('docker-table');
+            
+            if (data.success && data.containers) {
+                tbody.innerHTML = data.containers.map(container => `
+                    <tr>
+                        <td>${container.name}</td>
+                        <td>
+                            <span class="badge badge-${container.status === 'running' ? 'success' : 'error'}">
+                                ${container.status}
+                            </span>
+                        </td>
+                        <td>${container.image}</td>
+                        <td><code>${container.id}</code></td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Keine Daten verfügbar</td></tr>';
+            }
+            
+            showToast('Docker-Status aktualisiert', 'success');
+        } catch (error) {
+            showToast('Fehler beim Aktualisieren', 'error');
+        }
+    }
+
+    async function testDatabase() {
+        try {
+            const response = await fetch('/api/debug/database');
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('Datenbankverbindung erfolgreich', 'success');
+            } else {
+                showToast('Datenbankverbindung fehlgeschlagen: ' + data.message, 'error');
+            }
+            
+            showTestResults(data);
+        } catch (error) {
+            showToast('Fehler beim Testen der Datenbank', 'error');
+        }
+    }
+
+    async function testExternalAPIs() {
+        try {
+            const response = await fetch('/api/debug/test-api', { method: 'POST' });
+            const data = await response.json();
+            
+            showTestResults(data);
+            
+            const configuredAPIs = Object.values(data.apis).filter(api => api.configured).length;
+            showToast(`${configuredAPIs} API(s) konfiguriert`, 'info');
+        } catch (error) {
+            showToast('Fehler beim Testen der APIs', 'error');
+        }
+    }
+
+    async function checkEnvironment() {
+        try {
+            const response = await fetch('/api/debug/env');
+            const data = await response.json();
+            
+            showTestResults(data);
+        } catch (error) {
+            showToast('Fehler beim Laden der Umgebungsvariablen', 'error');
+        }
+    }
+
+    async function clearLogs() {
+        if (!confirm('Möchten Sie wirklich alle Logs löschen?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/debug/logs', { method: 'DELETE' });
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast(`${data.deleted} Logs gelöscht`, 'success');
+            } else {
+                showToast('Fehler beim Löschen der Logs', 'error');
+            }
+        } catch (error) {
+            showToast('Fehler: ' + error.message, 'error');
+        }
+    }
+
+    async function restartService(service) {
+        if (!confirm(`Möchten Sie ${service} wirklich neu starten?`)) {
+            return;
+        }
+        
+        showToast(`${service} wird neu gestartet...`, 'info');
+        
+        try {
+            const response = await fetch(`/api/system/restart/${service}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast(`${service} erfolgreich neu gestartet`, 'success');
+            } else {
+                showToast(`Fehler beim Neustart: ${data.message}`, 'error');
+            }
+        } catch (error) {
+            showToast('Fehler: ' + error.message, 'error');
+        }
+    }
+
+    function showTestResults(data) {
+        const resultsDiv = document.getElementById('test-results');
+        const outputPre = document.getElementById('test-output');
+        
+        outputPre.textContent = JSON.stringify(data, null, 2);
+        resultsDiv.style.display = 'block';
+        
+        // Scroll to results
+        resultsDiv.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Auto-refresh docker status every 30 seconds
+    setInterval(refreshDockerStatus, 30000);
+</script>
+{% endblock %}

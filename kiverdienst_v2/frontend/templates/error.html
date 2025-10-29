@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fehler - KIVerdienst v2</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="error-page">
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <h1>Oops! Ein Fehler ist aufgetreten</h1>
+            <p class="error-message">{{ error }}</p>
+            <div class="error-actions">
+                <a href="/" class="btn btn-primary">Zurück zur Startseite</a>
+                <a href="/debug" class="btn btn-secondary">Debug-Seite</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
