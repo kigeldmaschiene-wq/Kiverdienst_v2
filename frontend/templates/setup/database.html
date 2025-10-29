@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Database{% endblock %}
+
+{% block content %}
+<div class="setup-wizard">
+    <div class="setup-container">
+        <div class="setup-header">
+            <h1>Database Setup</h1>
+            <p>Configure your database connection</p>
+        </div>
+        
+        <div class="setup-content">
+            <div id="statusMessage" class="status-message" style="display:none;"></div>
+            
+            <h3>Testing Database Connection</h3>
+            
+            <div class="connection-status" id="connectionStatus">
+                <div class="status-indicator">
+                    <div class="spinner"></div>
+                    <p>Testing connection...</p>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <p><strong>Database Configuration:</strong></p>
+                <ul>
+                    <li>Host: postgres</li>
+                    <li>Port: 5432</li>
+                    <li>Database: kiverdienst_v2</li>
+                    <li>User: kiverdienst</li>
+                </ul>
+            </div>
+            
+            <div class="setup-actions">
+                <button class="btn" onclick="location.href='/setup/welcome'">
+                    ← Back
+                </button>
+                <button class="btn primary" id="continueBtn" onclick="initializeDatabase()" disabled>
+                    Initialize Database →
+                </button>
+            </div>
+        </div>
+        
+        <div class="setup-footer">
+            <div class="setup-steps">
+                <span class="step completed">1. Welcome</span>
+                <span class="step active">2. Database</span>
+                <span class="step">3. System</span>
+                <span class="step">4. Complete</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Test database connection on page load
+window.addEventListener('load', function() {
+    testDatabaseConnection();
+});
+
+function testDatabaseConnection() {
+    const statusDiv = document.getElementById('connectionStatus');
+    
+    apiCall('/setup/test-database', 'GET').then(response => {
+        if (response.success) {
+            statusDiv.innerHTML = `
+                <div class="status-indicator success">
+                    <div class="status-icon">✅</div>
+                    <p>Database connection successful!</p>
+                </div>
+            `;
+            document.getElementById('continueBtn').disabled = false;
+        } else {
+            statusDiv.innerHTML = `
+                <div class="status-indicator error">
+                    <div class="status-icon">❌</div>
+                    <p>Database connection failed</p>
+                    <p class="error-detail">${response.error || 'Unknown error'}</p>
+                    <button class="btn-small" onclick="testDatabaseConnection()">Retry</button>
+                </div>
+            `;
+        }
+    }).catch(error => {
+        statusDiv.innerHTML = `
+            <div class="status-indicator error">
+                <div class="status-icon">❌</div>
+                <p>Connection test failed</p>
+                <p class="error-detail">${error}</p>
+                <button class="btn-small" onclick="testDatabaseConnection()">Retry</button>
+            </div>
+        `;
+    });
+}
+
+function initializeDatabase() {
+    const continueBtn = document.getElementById('continueBtn');
+    continueBtn.disabled = true;
+    continueBtn.textContent = 'Initializing...';
+    
+    apiCall('/setup/init', 'POST').then(response => {
+        if (response.success) {
+            location.href = '/setup/system';
+        } else {
+            alert('Initialization failed: ' + (response.error || 'Unknown error'));
+            continueBtn.disabled = false;
+            continueBtn.textContent = 'Initialize Database →';
+        }
+    });
+}
+</script>
+{% endblock %}
