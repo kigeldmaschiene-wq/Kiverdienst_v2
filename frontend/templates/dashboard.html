@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - KIVerdienst v2{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <p class="subtitle">System Overview & Statistics</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">🏷️</div>
+        <div class="stat-content">
+            <h3 class="stat-value" id="totalBrands">-</h3>
+            <p class="stat-label">Total Brands</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">👤</div>
+        <div class="stat-content">
+            <h3 class="stat-value" id="totalCharacters">-</h3>
+            <p class="stat-label">Characters</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🎬</div>
+        <div class="stat-content">
+            <h3 class="stat-value" id="totalVideos">-</h3>
+            <p class="stat-label">Total Videos</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+            <h3 class="stat-value" id="postedVideos">-</h3>
+            <p class="stat-label">Posted Videos</p>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="dashboard-card">
+        <h2>Engagement Statistics</h2>
+        <div class="engagement-stats">
+            <div class="engagement-item">
+                <span class="engagement-label">Total Views</span>
+                <span class="engagement-value" id="totalViews">-</span>
+            </div>
+            <div class="engagement-item">
+                <span class="engagement-label">Total Likes</span>
+                <span class="engagement-value" id="totalLikes">-</span>
+            </div>
+            <div class="engagement-item">
+                <span class="engagement-label">Avg. Views/Video</span>
+                <span class="engagement-value" id="avgViews">-</span>
+            </div>
+            <div class="engagement-item">
+                <span class="engagement-label">Avg. Likes/Video</span>
+                <span class="engagement-value" id="avgLikes">-</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-card">
+        <h2>Recent Videos</h2>
+        <div id="recentVideos" class="recent-videos-list">
+            <p class="loading">Loading recent videos...</p>
+        </div>
+    </div>
+</div>
+
+<div class="quick-actions">
+    <h2>Quick Actions</h2>
+    <div class="action-buttons">
+        <a href="/brands" class="btn btn-primary">Create Brand</a>
+        <a href="/characters" class="btn btn-primary">Add Character</a>
+        <a href="/videos" class="btn btn-primary">Generate Video</a>
+        <a href="/content" class="btn btn-primary">Plan Content</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadDashboard() {
+    try {
+        const response = await apiRequest('/system/stats');
+        
+        if (response.success) {
+            const data = response.data;
+            
+            // Update stat cards
+            document.getElementById('totalBrands').textContent = data.brands.total;
+            document.getElementById('totalCharacters').textContent = data.characters.total;
+            document.getElementById('totalVideos').textContent = data.videos.total;
+            document.getElementById('postedVideos').textContent = data.videos.posted;
+            
+            // Update engagement stats
+            document.getElementById('totalViews').textContent = formatNumber(data.engagement.total_views);
+            document.getElementById('totalLikes').textContent = formatNumber(data.engagement.total_likes);
+            document.getElementById('avgViews').textContent = formatNumber(data.engagement.avg_views);
+            document.getElementById('avgLikes').textContent = formatNumber(data.engagement.avg_likes);
+            
+            // Display recent videos
+            const recentVideosDiv = document.getElementById('recentVideos');
+            if (data.recent_videos && data.recent_videos.length > 0) {
+                recentVideosDiv.innerHTML = data.recent_videos.map(video => `
+                    <div class="recent-video-item">
+                        <div class="video-info">
+                            <strong>${video.title}</strong>
+                            <small>${video.brand_name || 'Unknown Brand'}</small>
+                        </div>
+                        <div class="video-stats">
+                            <span>👁️ ${formatNumber(video.views || 0)}</span>
+                            <span>❤️ ${formatNumber(video.likes || 0)}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                recentVideosDiv.innerHTML = '<p class="empty-state">No videos yet. Create your first video!</p>';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        showNotification('Error loading dashboard data', 'error');
+    }
+}
+
+function formatNumber(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+}
+
+// Load dashboard on page load
+loadDashboard();
+</script>
+{% endblock %}

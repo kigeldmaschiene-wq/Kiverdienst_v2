@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Brands - KIVerdienst v2{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Brand Management</h1>
+    <button class="btn btn-primary" onclick="showCreateBrandModal()">+ Create Brand</button>
+</div>
+
+<div class="brands-container">
+    <div id="brandsList" class="brands-list">
+        <p class="loading">Loading brands...</p>
+    </div>
+</div>
+
+<!-- Create/Edit Brand Modal -->
+<div id="brandModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Create Brand</h2>
+            <button class="modal-close" onclick="closeBrandModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="brandForm" onsubmit="saveBrand(event)">
+                <input type="hidden" id="brandId">
+                
+                <div class="form-group">
+                    <label for="brandName">Brand Name *</label>
+                    <input type="text" id="brandName" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="brandNiche">Niche</label>
+                    <input type="text" id="brandNiche" class="form-control" placeholder="e.g., Fitness, Cooking, Tech">
+                </div>
+                
+                <div class="form-group">
+                    <label for="brandAudience">Target Audience</label>
+                    <textarea id="brandAudience" class="form-control" rows="3" placeholder="Describe your target audience..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="brandStrategy">Content Strategy</label>
+                    <textarea id="brandStrategy" class="form-control" rows="4" placeholder="Describe your content strategy..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="brandActive" checked>
+                        Active Brand
+                    </label>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeBrandModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Brand</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentBrandId = null;
+
+async function loadBrands() {
+    try {
+        const response = await apiRequest('/brands');
+        
+        if (response.success) {
+            const brandsDiv = document.getElementById('brandsList');
+            
+            if (response.data.length === 0) {
+                brandsDiv.innerHTML = '<p class="empty-state">No brands yet. Create your first brand!</p>';
+            } else {
+                brandsDiv.innerHTML = response.data.map(brand => `
+                    <div class="brand-card">
+                        <div class="brand-header">
+                            <h3>${brand.name}</h3>
+                            <span class="badge ${brand.active ? 'badge-success' : 'badge-danger'}">
+                                ${brand.active ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                        <div class="brand-info">
+                            <p><strong>Niche:</strong> ${brand.niche || 'Not specified'}</p>
+                            <p><strong>Target Audience:</strong> ${brand.target_audience || 'Not specified'}</p>
+                            <p><strong>Characters:</strong> ${brand.character_count || 0}</p>
+                            <p><strong>Videos:</strong> ${brand.video_count || 0}</p>
+                        </div>
+                        <div class="brand-actions">
+                            <button class="btn btn-sm btn-secondary" onclick="editBrand(${brand.id})">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteBrand(${brand.id}, '${brand.name}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading brands:', error);
+        showNotification('Error loading brands', 'error');
+    }
+}
+
+function showCreateBrandModal() {
+    currentBrandId = null;
+    document.getElementById('modalTitle').textContent = 'Create Brand';
+    document.getElementById('brandForm').reset();
+    document.getElementById('brandId').value = '';
+    document.getElementById('brandModal').style.display = 'flex';
+}
+
+async function editBrand(id) {
+    try {
+        const response = await apiRequest(`/brands/${id}`);
+        
+        if (response.success) {
+            const brand = response.data;
+            currentBrandId = id;
+            
+            document.getElementById('modalTitle').textContent = 'Edit Brand';
+            document.getElementById('brandId').value = id;
+            document.getElementById('brandName').value = brand.name;
+            document.getElementById('brandNiche').value = brand.niche || '';
+            document.getElementById('brandAudience').value = brand.target_audience || '';
+            document.getElementById('brandStrategy').value = brand.content_strategy || '';
+            document.getElementById('brandActive').checked = brand.active;
+            document.getElementById('brandModal').style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('Error loading brand:', error);
+        showNotification('Error loading brand', 'error');
+    }
+}
+
+async function saveBrand(event) {
+    event.preventDefault();
+    
+    const brandData = {
+        name: document.getElementById('brandName').value,
+        niche: document.getElementById('brandNiche').value,
+        target_audience: document.getElementById('brandAudience').value,
+        content_strategy: document.getElementById('brandStrategy').value,
+        active: document.getElementById('brandActive').checked
+    };
+    
+    try {
+        const brandId = document.getElementById('brandId').value;
+        const method = brandId ? 'PUT' : 'POST';
+        const endpoint = brandId ? `/brands/${brandId}` : '/brands';
+        
+        const response = await apiRequest(endpoint, method, brandData);
+        
+        if (response.success) {
+            showNotification(`Brand ${brandId ? 'updated' : 'created'} successfully`, 'success');
+            closeBrandModal();
+            loadBrands();
+        } else {
+            showNotification(response.error || 'Error saving brand', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving brand:', error);
+        showNotification('Error saving brand', 'error');
+    }
+}
+
+async function deleteBrand(id, name) {
+    if (!confirm(`Are you sure you want to delete "${name}"? This will also delete all associated characters and videos.`)) {
+        return;
+    }
+    
+    try {
+        const response = await apiRequest(`/brands/${id}`, 'DELETE');
+        
+        if (response.success) {
+            showNotification('Brand deleted successfully', 'success');
+            loadBrands();
+        } else {
+            showNotification(response.error || 'Error deleting brand', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting brand:', error);
+        showNotification('Error deleting brand', 'error');
+    }
+}
+
+function closeBrandModal() {
+    document.getElementById('brandModal').style.display = 'none';
+    document.getElementById('brandForm').reset();
+    currentBrandId = null;
+}
+
+// Load brands on page load
+loadBrands();
+</script>
+{% endblock %}

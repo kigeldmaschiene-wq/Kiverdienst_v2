@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Characters - KIVerdienst v2{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Character Management</h1>
+    <button class="btn btn-primary" onclick="showCreateCharacterModal()">+ Add Character</button>
+</div>
+
+<div class="filter-bar">
+    <select id="brandFilter" class="form-control" onchange="filterCharacters()">
+        <option value="">All Brands</option>
+    </select>
+</div>
+
+<div class="characters-container">
+    <div id="charactersList" class="characters-grid">
+        <p class="loading">Loading characters...</p>
+    </div>
+</div>
+
+<!-- Create/Edit Character Modal -->
+<div id="characterModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add Character</h2>
+            <button class="modal-close" onclick="closeCharacterModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="characterForm" onsubmit="saveCharacter(event)">
+                <input type="hidden" id="characterId">
+                
+                <div class="form-group">
+                    <label for="characterBrand">Brand *</label>
+                    <select id="characterBrand" class="form-control" required>
+                        <option value="">Select brand...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="characterName">Character Name *</label>
+                    <input type="text" id="characterName" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="characterGender">Gender</label>
+                    <select id="characterGender" class="form-control">
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="neutral">Neutral</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="characterVoice">Voice ID</label>
+                    <input type="text" id="characterVoice" class="form-control" placeholder="ElevenLabs Voice ID">
+                </div>
+                
+                <div class="form-group">
+                    <label for="characterPersonality">Personality</label>
+                    <textarea id="characterPersonality" class="form-control" rows="4" placeholder="Describe the character's personality, tone, and style..."></textarea>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeCharacterModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Character</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentCharacterId = null;
+let allCharacters = [];
+
+async function loadBrandOptions() {
+    try {
+        const response = await apiRequest('/brands');
+        
+        if (response.success) {
+            const brandSelects = ['characterBrand', 'brandFilter'];
+            
+            brandSelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                const currentValue = select.value;
+                
+                const options = response.data.map(brand => 
+                    `<option value="${brand.id}" ${brand.id == currentValue ? 'selected' : ''}>${brand.name}</option>`
+                ).join('');
+                
+                if (selectId === 'brandFilter') {
+                    select.innerHTML = '<option value="">All Brands</option>' + options;
+                } else {
+                    select.innerHTML = '<option value="">Select brand...</option>' + options;
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading brands:', error);
+    }
+}
+
+async function loadCharacters() {
+    try {
+        const response = await apiRequest('/characters');
+        
+        if (response.success) {
+            allCharacters = response.data;
+            filterCharacters();
+        }
+    } catch (error) {
+        console.error('Error loading characters:', error);
+        showNotification('Error loading characters', 'error');
+    }
+}
+
+function filterCharacters() {
+    const brandId = document.getElementById('brandFilter').value;
+    const filtered = brandId ? allCharacters.filter(c => c.brand_id == brandId) : allCharacters;
+    
+    const charactersDiv = document.getElementById('charactersList');
+    
+    if (filtered.length === 0) {
+        charactersDiv.innerHTML = '<p class="empty-state">No characters yet. Add your first character!</p>';
+    } else {
+        charactersDiv.innerHTML = filtered.map(character => `
+            <div class="character-card">
+                <div class="character-avatar">
+                    ${character.gender === 'male' ? '👨' : character.gender === 'female' ? '👩' : '🧑'}
+                </div>
+                <div class="character-info">
+                    <h3>${character.name}</h3>
+                    <p class="character-brand">${character.brand_name || 'Unknown Brand'}</p>
+                    <p class="character-gender">${character.gender || 'neutral'}</p>
+                    <p class="character-videos">Videos: ${character.video_count || 0}</p>
+                </div>
+                <div class="character-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="editCharacter(${character.id})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteCharacter(${character.id}, '${character.name}')">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function showCreateCharacterModal() {
+    currentCharacterId = null;
+    document.getElementById('modalTitle').textContent = 'Add Character';
+    document.getElementById('characterForm').reset();
+    document.getElementById('characterId').value = '';
+    document.getElementById('characterModal').style.display = 'flex';
+}
+
+async function editCharacter(id) {
+    try {
+        const response = await apiRequest(`/characters/${id}`);
+        
+        if (response.success) {
+            const character = response.data;
+            currentCharacterId = id;
+            
+            document.getElementById('modalTitle').textContent = 'Edit Character';
+            document.getElementById('characterId').value = id;
+            document.getElementById('characterBrand').value = character.brand_id;
+            document.getElementById('characterName').value = character.name;
+            document.getElementById('characterGender').value = character.gender || 'neutral';
+            document.getElementById('characterVoice').value = character.voice_id || '';
+            document.getElementById('characterPersonality').value = character.personality || '';
+            document.getElementById('characterModal').style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('Error loading character:', error);
+        showNotification('Error loading character', 'error');
+    }
+}
+
+async function saveCharacter(event) {
+    event.preventDefault();
+    
+    const characterData = {
+        brand_id: parseInt(document.getElementById('characterBrand').value),
+        name: document.getElementById('characterName').value,
+        gender: document.getElementById('characterGender').value,
+        voice_id: document.getElementById('characterVoice').value,
+        personality: document.getElementById('characterPersonality').value
+    };
+    
+    try {
+        const characterId = document.getElementById('characterId').value;
+        const method = characterId ? 'PUT' : 'POST';
+        const endpoint = characterId ? `/characters/${characterId}` : '/characters';
+        
+        const response = await apiRequest(endpoint, method, characterData);
+        
+        if (response.success) {
+            showNotification(`Character ${characterId ? 'updated' : 'created'} successfully`, 'success');
+            closeCharacterModal();
+            loadCharacters();
+        } else {
+            showNotification(response.error || 'Error saving character', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving character:', error);
+        showNotification('Error saving character', 'error');
+    }
+}
+
+async function deleteCharacter(id, name) {
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await apiRequest(`/characters/${id}`, 'DELETE');
+        
+        if (response.success) {
+            showNotification('Character deleted successfully', 'success');
+            loadCharacters();
+        } else {
+            showNotification(response.error || 'Error deleting character', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting character:', error);
+        showNotification('Error deleting character', 'error');
+    }
+}
+
+function closeCharacterModal() {
+    document.getElementById('characterModal').style.display = 'none';
+    document.getElementById('characterForm').reset();
+    currentCharacterId = null;
+}
+
+// Load data on page load
+loadBrandOptions();
+loadCharacters();
+</script>
+{% endblock %}

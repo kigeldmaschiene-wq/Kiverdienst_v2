@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - System{% endblock %}
+
+{% block content %}
+<div class="setup-container">
+    <div class="setup-card">
+        <h1>System Configuration</h1>
+        <p class="lead">Configure your KIVerdienst system</p>
+        
+        <form id="systemForm" onsubmit="saveConfig(event)">
+            <div class="form-group">
+                <label for="systemName">System Name</label>
+                <input type="text" id="systemName" class="form-control" value="KIVerdienst v2" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="defaultPlatform">Default Platform</label>
+                <select id="defaultPlatform" class="form-control">
+                    <option value="tiktok">TikTok</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="youtube">YouTube Shorts</option>
+                </select>
+            </div>
+            
+            <div class="setup-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.location.href='/setup/database'">Back</button>
+                <button type="submit" class="btn btn-primary">Complete Setup</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function saveConfig(event) {
+    event.preventDefault();
+    
+    try {
+        // Save configuration
+        await apiRequest('/setup/config', 'POST', {
+            key: 'default_platform',
+            value: document.getElementById('defaultPlatform').value,
+            description: 'Default platform for content'
+        });
+        
+        // Mark setup as complete
+        const response = await apiRequest('/setup/complete', 'POST');
+        
+        if (response.success) {
+            window.location.href = '/setup/complete';
+        } else {
+            showNotification('Error completing setup: ' + response.error, 'error');
+        }
+    } catch (error) {
+        showNotification('Error saving configuration: ' + error.message, 'error');
+    }
+}
+</script>
+{% endblock %}

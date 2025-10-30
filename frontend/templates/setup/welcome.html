@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Welcome{% endblock %}
+
+{% block content %}
+<div class="setup-container">
+    <div class="setup-card">
+        <h1>Welcome to KIVerdienst v2</h1>
+        <p class="lead">Let's get your autonomous content generation system up and running!</p>
+        
+        <div class="setup-info">
+            <h3>What you'll set up:</h3>
+            <ul>
+                <li>✅ Database connection</li>
+                <li>✅ System configuration</li>
+                <li>✅ Initial brand setup</li>
+            </ul>
+        </div>
+        
+        <div class="setup-actions">
+            <button class="btn btn-primary btn-large" onclick="startSetup()">Start Setup</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function startSetup() {
+    try {
+        const response = await apiRequest('/setup/init', 'POST');
+        
+        if (response.success) {
+            window.location.href = '/setup/database';
+        } else {
+            showNotification('Setup initialization failed: ' + response.error, 'error');
+        }
+    } catch (error) {
+        showNotification('Error starting setup: ' + error.message, 'error');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Content Strategy - KIVerdienst v2{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Content Strategy</h1>
+    <button class="btn btn-primary" onclick="showCreateIdeaModal()">+ Add Idea</button>
+</div>
+
+<div class="filter-bar">
+    <select id="brandFilter" class="form-control" onchange="filterIdeas()">
+        <option value="">All Brands</option>
+    </select>
+    <select id="usedFilter" class="form-control" onchange="filterIdeas()">
+        <option value="">All Ideas</option>
+        <option value="false">Unused</option>
+        <option value="true">Used</option>
+    </select>
+</div>
+
+<div class="content-container">
+    <div id="ideasList" class="ideas-list">
+        <p class="loading">Loading content ideas...</p>
+    </div>
+</div>
+
+<!-- Create/Edit Idea Modal -->
+<div id="ideaModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add Content Idea</h2>
+            <button class="modal-close" onclick="closeIdeaModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="ideaForm" onsubmit="saveIdea(event)">
+                <input type="hidden" id="ideaId">
+                
+                <div class="form-group">
+                    <label for="ideaBrand">Brand *</label>
+                    <select id="ideaBrand" class="form-control" required>
+                        <option value="">Select brand...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ideaTitle">Title *</label>
+                    <input type="text" id="ideaTitle" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ideaDescription">Description</label>
+                    <textarea id="ideaDescription" class="form-control" rows="4" placeholder="Detailed description of the content idea..."></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ideaCategory">Category</label>
+                        <input type="text" id="ideaCategory" class="form-control" placeholder="e.g., Tutorial, Story, Tip">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ideaTrending">Trending Score (0-100)</label>
+                        <input type="number" id="ideaTrending" class="form-control" min="0" max="100" value="50">
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeIdeaModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Idea</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentIdeaId = null;
+let allIdeas = [];
+
+async function loadBrands() {
+    try {
+        const response = await apiRequest('/brands');
+        
+        if (response.success) {
+            const brandSelects = ['ideaBrand', 'brandFilter'];
+            brandSelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                const options = response.data.map(brand => 
+                    `<option value="${brand.id}">${brand.name}</option>`
+                ).join('');
+                
+                if (selectId === 'brandFilter') {
+                    select.innerHTML = '<option value="">All Brands</option>' + options;
+                } else {
+                    select.innerHTML = '<option value="">Select brand...</option>' + options;
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading brands:', error);
+    }
+}
+
+async function loadIdeas() {
+    try {
+        const response = await apiRequest('/content/ideas');
+        
+        if (response.success) {
+            allIdeas = response.data;
+            filterIdeas();
+        }
+    } catch (error) {
+        console.error('Error loading ideas:', error);
+        showNotification('Error loading content ideas', 'error');
+    }
+}
+
+function filterIdeas() {
+    const brandId = document.getElementById('brandFilter').value;
+    const used = document.getElementById('usedFilter').value;
+    
+    let filtered = allIdeas;
+    
+    if (brandId) {
+        filtered = filtered.filter(i => i.brand_id == brandId);
+    }
+    
+    if (used !== '') {
+        filtered = filtered.filter(i => i.used === (used === 'true'));
+    }
+    
+    const ideasDiv = document.getElementById('ideasList');
+    
+    if (filtered.length === 0) {
+        ideasDiv.innerHTML = '<p class="empty-state">No content ideas yet. Add your first idea!</p>';
+    } else {
+        ideasDiv.innerHTML = filtered.map(idea => `
+            <div class="idea-card">
+                <div class="idea-header">
+                    <h3>${idea.title}</h3>
+                    <div class="idea-badges">
+                        <span class="badge ${idea.used ? 'badge-secondary' : 'badge-success'}">
+                            ${idea.used ? 'Used' : 'Available'}
+                        </span>
+                        <span class="badge badge-primary">Score: ${idea.trending_score || 0}</span>
+                    </div>
+                </div>
+                <p class="idea-description">${idea.description || 'No description'}</p>
+                <div class="idea-meta">
+                    <span><strong>Category:</strong> ${idea.category || 'General'}</span>
+                </div>
+                <div class="idea-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="editIdea(${idea.id})">Edit</button>
+                    <button class="btn btn-sm ${idea.used ? 'btn-secondary' : 'btn-success'}" 
+                            onclick="toggleIdeaUsed(${idea.id}, ${!idea.used})">
+                        ${idea.used ? 'Mark Unused' : 'Mark Used'}
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function showCreateIdeaModal() {
+    currentIdeaId = null;
+    document.getElementById('modalTitle').textContent = 'Add Content Idea';
+    document.getElementById('ideaForm').reset();
+    document.getElementById('ideaId').value = '';
+    document.getElementById('ideaModal').style.display = 'flex';
+}
+
+async function editIdea(id) {
+    try {
+        const idea = allIdeas.find(i => i.id === id);
+        
+        if (idea) {
+            currentIdeaId = id;
+            
+            document.getElementById('modalTitle').textContent = 'Edit Content Idea';
+            document.getElementById('ideaId').value = id;
+            document.getElementById('ideaBrand').value = idea.brand_id;
+            document.getElementById('ideaTitle').value = idea.title;
+            document.getElementById('ideaDescription').value = idea.description || '';
+            document.getElementById('ideaCategory').value = idea.category || '';
+            document.getElementById('ideaTrending').value = idea.trending_score || 50;
+            document.getElementById('ideaModal').style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('Error loading idea:', error);
+        showNotification('Error loading idea', 'error');
+    }
+}
+
+async function saveIdea(event) {
+    event.preventDefault();
+    
+    const ideaData = {
+        brand_id: parseInt(document.getElementById('ideaBrand').value),
+        title: document.getElementById('ideaTitle').value,
+        description: document.getElementById('ideaDescription').value,
+        category: document.getElementById('ideaCategory').value,
+        trending_score: parseInt(document.getElementById('ideaTrending').value)
+    };
+    
+    try {
+        const ideaId = document.getElementById('ideaId').value;
+        const method = ideaId ? 'PUT' : 'POST';
+        const endpoint = ideaId ? `/content/ideas/${ideaId}` : '/content/ideas';
+        
+        const response = await apiRequest(endpoint, method, ideaData);
+        
+        if (response.success) {
+            showNotification(`Idea ${ideaId ? 'updated' : 'created'} successfully`, 'success');
+            closeIdeaModal();
+            loadIdeas();
+        } else {
+            showNotification(response.error || 'Error saving idea', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving idea:', error);
+        showNotification('Error saving idea', 'error');
+    }
+}
+
+async function toggleIdeaUsed(id, used) {
+    try {
+        const response = await apiRequest(`/content/ideas/${id}`, 'PUT', { used });
+        
+        if (response.success) {
+            showNotification(`Idea marked as ${used ? 'used' : 'unused'}`, 'success');
+            loadIdeas();
+        } else {
+            showNotification(response.error || 'Error updating idea', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating idea:', error);
+        showNotification('Error updating idea', 'error');
+    }
+}
+
+function closeIdeaModal() {
+    document.getElementById('ideaModal').style.display = 'none';
+    document.getElementById('ideaForm').reset();
+    currentIdeaId = null;
+}
+
+// Load data on page load
+loadBrands();
+loadIdeas();
+</script>
+{% endblock %}

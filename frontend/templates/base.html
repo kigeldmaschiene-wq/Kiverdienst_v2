@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}KIVerdienst v2{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">KIVerdienst</h1>
+                <p class="version">v2.0</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item {% if request.path == '/dashboard' %}active{% endif %}">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/brands" class="nav-item {% if request.path == '/brands' %}active{% endif %}">
+                    <span class="nav-icon">🏷️</span>
+                    <span class="nav-text">Brands</span>
+                </a>
+                <a href="/characters" class="nav-item {% if request.path == '/characters' %}active{% endif %}">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Characters</span>
+                </a>
+                <a href="/videos" class="nav-item {% if request.path == '/videos' %}active{% endif %}">
+                    <span class="nav-icon">🎬</span>
+                    <span class="nav-text">Videos</span>
+                </a>
+                <a href="/content" class="nav-item {% if request.path == '/content' %}active{% endif %}">
+                    <span class="nav-icon">💡</span>
+                    <span class="nav-text">Content Strategy</span>
+                </a>
+                <div class="nav-separator"></div>
+                <a href="/debug" class="nav-item {% if request.path == '/debug' %}active{% endif %}">
+                    <span class="nav-icon">🔧</span>
+                    <span class="nav-text">Debug</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span class="status-text" id="statusText">Checking...</span>
+                </div>
+            </div>
+        </aside>
+        
+        <main class="content">
+            <div id="notification" class="notification" style="display: none;"></div>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        // Check backend status on load
+        checkBackendStatus();
+        setInterval(checkBackendStatus, 30000); // Check every 30 seconds
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

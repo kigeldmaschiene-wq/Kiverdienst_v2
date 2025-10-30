@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Debug & Monitoring - KIVerdienst v2{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>System Debug & Monitoring</h1>
+    <button class="btn btn-primary" onclick="refreshAll()">🔄 Refresh All</button>
+</div>
+
+<div class="debug-grid">
+    <!-- System Health -->
+    <div class="debug-card">
+        <h2>System Health</h2>
+        <div id="systemHealth" class="debug-content">
+            <p class="loading">Checking system health...</p>
+        </div>
+    </div>
+    
+    <!-- API Endpoints -->
+    <div class="debug-card">
+        <h2>API Endpoints Test</h2>
+        <div class="debug-content">
+            <div class="endpoint-test">
+                <select id="endpointSelect" class="form-control">
+                    <option value="/api/health">GET /api/health</option>
+                    <option value="/api/system/stats">GET /api/system/stats</option>
+                    <option value="/api/brands">GET /api/brands</option>
+                    <option value="/api/characters">GET /api/characters</option>
+                    <option value="/api/videos">GET /api/videos</option>
+                    <option value="/api/setup/status">GET /api/setup/status</option>
+                </select>
+                <button class="btn btn-secondary" onclick="testEndpoint()">Test</button>
+            </div>
+            <pre id="endpointResult" class="code-block">Select an endpoint and click Test</pre>
+        </div>
+    </div>
+</div>
+
+<div class="debug-grid">
+    <!-- Backend Logs -->
+    <div class="debug-card full-width">
+        <h2>Backend Logs (Last 50 lines)</h2>
+        <div class="debug-content">
+            <pre id="backendLogs" class="log-viewer">Logs not available in this environment</pre>
+        </div>
+    </div>
+    
+    <!-- Environment Info -->
+    <div class="debug-card">
+        <h2>Environment Information</h2>
+        <div id="envInfo" class="debug-content">
+            <p class="loading">Loading environment info...</p>
+        </div>
+    </div>
+    
+    <!-- Database Info -->
+    <div class="debug-card">
+        <h2>Database Connection</h2>
+        <div id="dbInfo" class="debug-content">
+            <p class="loading">Testing database connection...</p>
+        </div>
+    </div>
+</div>
+
+<div class="debug-grid">
+    <!-- System Stats -->
+    <div class="debug-card full-width">
+        <h2>System Statistics</h2>
+        <div id="systemStats" class="debug-content">
+            <p class="loading">Loading statistics...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function checkSystemHealth() {
+    try {
+        const response = await fetch('{{ BACKEND_URL }}/api/system/health' || 'http://backend:8000/api/system/health');
+        const data = await response.json();
+        
+        const healthDiv = document.getElementById('systemHealth');
+        healthDiv.innerHTML = `
+            <div class="health-item">
+                <strong>Overall Status:</strong> 
+                <span class="badge ${data.data.status === 'healthy' ? 'badge-success' : 'badge-danger'}">
+                    ${data.data.status}
+                </span>
+            </div>
+            <div class="health-item">
+                <strong>Database:</strong> 
+                <span class="badge ${data.data.components.database.status === 'up' ? 'badge-success' : 'badge-danger'}">
+                    ${data.data.components.database.status}
+                </span>
+            </div>
+            <div class="health-item">
+                <strong>Database Type:</strong> ${data.data.components.database.type}
+            </div>
+            <div class="health-item">
+                <strong>Accessible:</strong> ${data.data.components.database.accessible ? '✅ Yes' : '❌ No'}
+            </div>
+        `;
+    } catch (error) {
+        document.getElementById('systemHealth').innerHTML = `
+            <div class="error">❌ Failed to connect to backend: ${error.message}</div>
+        `;
+    }
+}
+
+async function testEndpoint() {
+    const endpoint = document.getElementById('endpointSelect').value;
+    const resultDiv = document.getElementById('endpointResult');
+    
+    resultDiv.textContent = 'Testing...';
+    
+    try {
+        const response = await apiRequest(endpoint);
+        resultDiv.textContent = JSON.stringify(response, null, 2);
+    } catch (error) {
+        resultDiv.textContent = `Error: ${error.message}`;
+    }
+}
+
+async function loadEnvInfo() {
+    try {
+        const response = await apiRequest('/system/info');
+        
+        if (response.success) {
+            const data = response.data;
+            document.getElementById('envInfo').innerHTML = `
+                <div class="info-item"><strong>Name:</strong> ${data.name}</div>
+                <div class="info-item"><strong>Version:</strong> ${data.version}</div>
+                <div class="info-item"><strong>Python:</strong> ${data.python_version.split(' ')[0]}</div>
+                <div class="info-item"><strong>Platform:</strong> ${data.platform}</div>
+                <div class="info-item"><strong>Architecture:</strong> ${data.architecture}</div>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('envInfo').innerHTML = `<div class="error">Error loading info: ${error.message}</div>`;
+    }
+}
+
+async function testDatabase() {
+    try {
+        const response = await apiRequest('/api/health');
+        
+        const dbDiv = document.getElementById('dbInfo');
+        dbDiv.innerHTML = `
+            <div class="info-item">
+                <strong>Status:</strong> 
+                <span class="badge ${response.database === 'connected' ? 'badge-success' : 'badge-danger'}">
+                    ${response.database}
+                </span>
+            </div>
+            <div class="info-item"><strong>Service:</strong> ${response.service}</div>
+        `;
+    } catch (error) {
+        document.getElementById('dbInfo').innerHTML = `<div class="error">❌ Connection failed: ${error.message}</div>`;
+    }
+}
+
+async function loadSystemStats() {
+    try {
+        const response = await apiRequest('/system/stats');
+        
+        if (response.success) {
+            const data = response.data;
+            document.getElementById('systemStats').innerHTML = `
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <strong>Brands:</strong>
+                        <div>Total: ${data.brands.total}</div>
+                        <div>Active: ${data.brands.active}</div>
+                        <div>Inactive: ${data.brands.inactive}</div>
+                    </div>
+                    <div class="stat-item">
+                        <strong>Videos:</strong>
+                        <div>Total: ${data.videos.total}</div>
+                        <div>Posted: ${data.videos.posted}</div>
+                        <div>Draft: ${data.videos.draft}</div>
+                    </div>
+                    <div class="stat-item">
+                        <strong>Engagement:</strong>
+                        <div>Total Views: ${data.engagement.total_views}</div>
+                        <div>Total Likes: ${data.engagement.total_likes}</div>
+                        <div>Avg Views: ${data.engagement.avg_views}</div>
+                    </div>
+                    <div class="stat-item">
+                        <strong>Characters:</strong>
+                        <div>Total: ${data.characters.total}</div>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('systemStats').innerHTML = `<div class="error">Error loading stats: ${error.message}</div>`;
+    }
+}
+
+function refreshAll() {
+    checkSystemHealth();
+    loadEnvInfo();
+    testDatabase();
+    loadSystemStats();
+}
+
+// Load on page load
+refreshAll();
+</script>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Database{% endblock %}
+
+{% block content %}
+<div class="setup-container">
+    <div class="setup-card">
+        <h1>Database Configuration</h1>
+        <p class="lead">Testing database connection...</p>
+        
+        <div id="dbStatus" class="setup-status">
+            <p class="loading">Checking database...</p>
+        </div>
+        
+        <div class="setup-actions">
+            <button class="btn btn-secondary" onclick="window.location.href='/setup'">Back</button>
+            <button class="btn btn-primary" onclick="continueSetup()" id="continueBtn" disabled>Continue</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function checkDatabase() {
+    try {
+        const response = await apiRequest('/api/health');
+        
+        const statusDiv = document.getElementById('dbStatus');
+        const continueBtn = document.getElementById('continueBtn');
+        
+        if (response.database === 'connected') {
+            statusDiv.innerHTML = `
+                <div class="success-message">
+                    <h3>✅ Database Connected!</h3>
+                    <p>PostgreSQL database is ready.</p>
+                </div>
+            `;
+            continueBtn.disabled = false;
+        } else {
+            statusDiv.innerHTML = `
+                <div class="error-message">
+                    <h3>❌ Database Connection Failed</h3>
+                    <p>Please check your database configuration.</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('dbStatus').innerHTML = `
+            <div class="error-message">
+                <h3>❌ Error</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function continueSetup() {
+    window.location.href = '/setup/system';
+}
+
+// Check database on load
+checkDatabase();
+</script>
+{% endblock %}
