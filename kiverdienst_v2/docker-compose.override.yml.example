@@ -1,0 +1,70 @@
+# Docker Compose Override Example
+# Copy this file to docker-compose.override.yml for local development
+# cp docker-compose.override.yml.example docker-compose.override.yml
+
+version: '3.8'
+
+services:
+  # Development overrides for FastAPI
+  fastapi:
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - RELOAD=true
+    volumes:
+      # Mount local code for hot reload
+      - ./backend:/app:delegated
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Development overrides for WebUI
+  webui:
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Mount local code for hot reload
+      - ./frontend:/app:delegated
+      - /app/node_modules
+    command: npm run dev
+
+  # Disable GPU requirement for local development
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices: []
+
+  # PostgreSQL with exposed port for local tools
+  postgres:
+    ports:
+      - "5432:5432"  # Expose to host for local database tools
+
+  # Add pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: kiverdienst_pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@kiverdienst.local
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    ports:
+      - "5050:80"
+    networks:
+      - kiverdienst_network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # Redis for caching (optional)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: kiverdienst_redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - kiverdienst_network
+  #   restart: unless-stopped
+
+# volumes:
+#   redis_data:

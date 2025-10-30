@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Brands - KIVerdienst v2{% endblock %}
+
+{% block header %}
+<div class="page-header-content">
+    <div>
+        <h1 class="page-title">Brand Management</h1>
+        <p class="page-subtitle">Manage your content brands and channels</p>
+    </div>
+    <button class="btn primary" onclick="showCreateModal()">
+        <span class="btn-icon">➕</span>
+        Create Brand
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="brands-page">
+    {% if brands %}
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Brand Name</th>
+                    <th>Niche</th>
+                    <th>Platforms</th>
+                    <th>Videos</th>
+                    <th>Characters</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for brand in brands %}
+                <tr onclick="location.href='/brands/{{ brand.id }}'" style="cursor: pointer;">
+                    <td>
+                        <strong>{{ brand.name }}</strong>
+                    </td>
+                    <td>{{ brand.niche or '-' }}</td>
+                    <td>
+                        <div class="platforms">
+                            {% if brand.platforms %}
+                                {% for platform in brand.platforms %}
+                                <span class="badge">{{ platform }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">None</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>{{ brand.video_count or 0 }}</td>
+                    <td>{{ brand.character_count or 0 }}</td>
+                    <td>
+                        <span class="badge {% if brand.active %}success{% else %}inactive{% endif %}">
+                            {{ 'Active' if brand.active else 'Inactive' }}
+                        </span>
+                    </td>
+                    <td onclick="event.stopPropagation()">
+                        <button class="btn-icon-small" onclick="editBrand({{ brand.id }})" title="Edit">✏️</button>
+                        <button class="btn-icon-small danger" onclick="deleteBrand({{ brand.id }}, '{{ brand.name }}')" title="Delete">🗑️</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🏢</div>
+        <h3>No Brands Yet</h3>
+        <p>Create your first brand to start generating content</p>
+        <button class="btn primary" onclick="showCreateModal()">Create Your First Brand</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Create/Edit Brand Modal -->
+<div id="brandModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Create Brand</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="brandForm" onsubmit="saveBrand(event)">
+            <div class="form-group">
+                <label for="name">Brand Name *</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="niche">Niche</label>
+                <input type="text" id="niche" name="niche" placeholder="e.g., Finance, Fitness, Tech">
+            </div>
+            
+            <div class="form-group">
+                <label for="target_audience">Target Audience</label>
+                <textarea id="target_audience" name="target_audience" rows="3" placeholder="Describe your target audience..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="content_strategy">Content Strategy</label>
+                <textarea id="content_strategy" name="content_strategy" rows="4" placeholder="Describe your content strategy..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Platforms</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" name="platforms" value="tiktok"> TikTok</label>
+                    <label><input type="checkbox" name="platforms" value="instagram"> Instagram</label>
+                    <label><input type="checkbox" name="platforms" value="youtube"> YouTube</label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="active" id="active" checked>
+                    Active
+                </label>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn primary">Save Brand</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingBrandId = null;
+
+function showCreateModal() {
+    editingBrandId = null;
+    document.getElementById('modalTitle').textContent = 'Create Brand';
+    document.getElementById('brandForm').reset();
+    document.getElementById('brandModal').style.display = 'flex';
+}
+
+function editBrand(brandId) {
+    editingBrandId = brandId;
+    document.getElementById('modalTitle').textContent = 'Edit Brand';
+    
+    // Fetch brand data
+    apiCall(`/brands/${brandId}`, 'GET').then(response => {
+        if (response.success) {
+            const brand = response.data;
+            document.getElementById('name').value = brand.name || '';
+            document.getElementById('niche').value = brand.niche || '';
+            document.getElementById('target_audience').value = brand.target_audience || '';
+            document.getElementById('content_strategy').value = brand.content_strategy || '';
+            document.getElementById('active').checked = brand.active;
+            
+            // Set platforms
+            document.querySelectorAll('input[name="platforms"]').forEach(cb => {
+                cb.checked = brand.platforms && brand.platforms.includes(cb.value);
+            });
+            
+            document.getElementById('brandModal').style.display = 'flex';
+        }
+    });
+}
+
+function saveBrand(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const platforms = [];
+    formData.getAll('platforms').forEach(p => platforms.push(p));
+    
+    const data = {
+        name: formData.get('name'),
+        niche: formData.get('niche'),
+        target_audience: formData.get('target_audience'),
+        content_strategy: formData.get('content_strategy'),
+        platforms: platforms,
+        active: formData.get('active') === 'on'
+    };
+    
+    const method = editingBrandId ? 'PUT' : 'POST';
+    const url = editingBrandId ? `/brands/${editingBrandId}` : '/brands';
+    
+    apiCall(url, method, data).then(response => {
+        if (response.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (response.error || 'Failed to save brand'));
+        }
+    });
+}
+
+function deleteBrand(brandId, brandName) {
+    if (confirm(`Are you sure you want to delete "${brandName}"? This will also delete all associated characters and videos.`)) {
+        apiCall(`/brands/${brandId}`, 'DELETE').then(response => {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (response.error || 'Failed to delete brand'));
+            }
+        });
+    }
+}
+
+function closeModal() {
+    document.getElementById('brandModal').style.display = 'none';
+    editingBrandId = null;
+}
+
+// Close modal on outside click
+window.onclick = function(event) {
+    const modal = document.getElementById('brandModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

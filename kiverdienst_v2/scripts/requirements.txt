@@ -1,0 +1,9 @@
+# Python dependencies for KIVerdienst v2 scripts
+# Install with: pip install -r requirements.txt
+
+# Database
+psycopg2-binary==2.9.9
+
+# Optional: For enhanced functionality
+# python-dotenv==1.0.0  # For loading .env files
+# sqlalchemy==2.0.23    # If using ORM

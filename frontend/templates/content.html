@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Content Strategy - KIVerdienst v2{% endblock %}
+
+{% block header %}
+<h1 class="page-title">Content Strategy</h1>
+<p class="page-subtitle">Plan and optimize your content schedule</p>
+{% endblock %}
+
+{% block content %}
+<div class="content-strategy-page">
+    <div class="strategy-section">
+        <h2 class="section-title">Content Calendar Generator</h2>
+        
+        <form id="calendarForm" class="strategy-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="select_brand">Select Brand *</label>
+                    <select id="select_brand" required>
+                        <option value="">Choose a brand</option>
+                        {% for brand in brands %}
+                        <option value="{{ brand.id }}">{{ brand.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="calendar_days">Duration (Days)</label>
+                    <input type="number" id="calendar_days" value="30" min="7" max="90">
+                </div>
+            </div>
+            
+            <button type="button" class="btn primary" onclick="generateCalendar()">
+                Generate Calendar
+            </button>
+        </form>
+        
+        <div id="calendarResult" class="result-area" style="display:none;">
+            <h3>Generated Calendar</h3>
+            <div id="calendarContent"></div>
+        </div>
+    </div>
+    
+    <div class="strategy-section">
+        <h2 class="section-title">Content Ideas Generator</h2>
+        
+        <form id="ideasForm" class="strategy-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="ideas_brand">Select Brand *</label>
+                    <select id="ideas_brand" required>
+                        <option value="">Choose a brand</option>
+                        {% for brand in brands %}
+                        <option value="{{ brand.id }}">{{ brand.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ideas_count">Number of Ideas</label>
+                    <input type="number" id="ideas_count" value="5" min="1" max="20">
+                </div>
+            </div>
+            
+            <button type="button" class="btn success" onclick="generateIdeas()">
+                Generate Ideas
+            </button>
+        </form>
+        
+        <div id="ideasResult" class="result-area" style="display:none;">
+            <h3>Content Ideas</h3>
+            <div id="ideasContent" class="ideas-grid"></div>
+        </div>
+    </div>
+    
+    <div class="strategy-section">
+        <h2 class="section-title">Posting Schedule Optimizer</h2>
+        
+        <div class="platforms-grid">
+            <div class="platform-card">
+                <h3>TikTok</h3>
+                <p class="platform-desc">Best Times:</p>
+                <ul class="time-list">
+                    <li>09:00 - Morning commute</li>
+                    <li>12:00 - Lunch break</li>
+                    <li>19:00 - Evening peak</li>
+                </ul>
+                <p class="platform-tip">💡 Post 2-3 times daily for best results</p>
+            </div>
+            
+            <div class="platform-card">
+                <h3>Instagram</h3>
+                <p class="platform-desc">Best Times:</p>
+                <ul class="time-list">
+                    <li>11:00 - Mid-morning</li>
+                    <li>14:00 - Afternoon</li>
+                    <li>20:00 - Evening</li>
+                </ul>
+                <p class="platform-tip">💡 Post 1-2 times daily, use Stories frequently</p>
+            </div>
+            
+            <div class="platform-card">
+                <h3>YouTube</h3>
+                <p class="platform-desc">Best Times:</p>
+                <ul class="time-list">
+                    <li>14:00 - Afternoon</li>
+                    <li>18:00 - After work</li>
+                    <li>20:00 - Prime time</li>
+                </ul>
+                <p class="platform-tip">💡 Post 2-3 times weekly for consistency</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="strategy-section">
+        <h2 class="section-title">Performance Insights</h2>
+        
+        <div class="insights-info">
+            <p>📊 Analyze your video performance to optimize future content</p>
+            <p>🎯 Track engagement rates and viewer retention</p>
+            <p>📈 Identify top-performing content types</p>
+            <button class="btn" onclick="location.href='/dashboard'">View Dashboard</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function generateCalendar() {
+    const brandId = document.getElementById('select_brand').value;
+    const days = document.getElementById('calendar_days').value;
+    
+    if (!brandId) {
+        alert('Please select a brand');
+        return;
+    }
+    
+    // Show loading
+    const resultDiv = document.getElementById('calendarResult');
+    const contentDiv = document.getElementById('calendarContent');
+    resultDiv.style.display = 'block';
+    contentDiv.innerHTML = '<p class="loading">Generating calendar... ⏳</p>';
+    
+    // Simulate calendar generation (replace with actual API call)
+    setTimeout(() => {
+        contentDiv.innerHTML = `
+            <p class="success-message">✅ Calendar generated for ${days} days!</p>
+            <p>This feature will integrate with the strategy agent to create a detailed content calendar.</p>
+            <p>Coming soon: Export to CSV, sync with Google Calendar, automated posting schedule.</p>
+        `;
+    }, 1500);
+}
+
+function generateIdeas() {
+    const brandId = document.getElementById('ideas_brand').value;
+    const count = document.getElementById('ideas_count').value;
+    
+    if (!brandId) {
+        alert('Please select a brand');
+        return;
+    }
+    
+    // Show loading
+    const resultDiv = document.getElementById('ideasResult');
+    const contentDiv = document.getElementById('ideasContent');
+    resultDiv.style.display = 'block';
+    contentDiv.innerHTML = '<p class="loading">Generating ideas... 💡</p>';
+    
+    // Simulate idea generation (replace with actual API call)
+    setTimeout(() => {
+        const sampleIdeas = [
+            {
+                title: "5 Things You Didn't Know About Your Niche",
+                hook: "Number 3 will blow your mind!",
+                type: "Educational"
+            },
+            {
+                title: "The Truth Nobody Tells You",
+                hook: "I wish I knew this sooner...",
+                type: "Educational"
+            },
+            {
+                title: "Watch This Before You Start",
+                hook: "This could save you hours...",
+                type: "Entertainment"
+            }
+        ];
+        
+        contentDiv.innerHTML = sampleIdeas.map(idea => `
+            <div class="idea-card">
+                <h4>${idea.title}</h4>
+                <p class="idea-hook"><strong>Hook:</strong> ${idea.hook}</p>
+                <span class="badge">${idea.type}</span>
+                <button class="btn-small primary" onclick="createVideoFromIdea('${idea.title}', '${idea.hook}')">
+                    Create Video
+                </button>
+            </div>
+        `).join('');
+    }, 2000);
+}
+
+function createVideoFromIdea(title, hook) {
+    // Redirect to videos page with pre-filled data
+    sessionStorage.setItem('videoTitle', title);
+    sessionStorage.setItem('videoHook', hook);
+    window.location.href = '/videos';
+}
+</script>
+{% endblock %}
