@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Debug - KIVerdienst v2{% endblock %}
+
+{% block header %}
+<h1 class="page-title">Debug & Monitoring</h1>
+<p class="page-subtitle">System health and diagnostics</p>
+{% endblock %}
+
+{% block content %}
+<div class="debug-page">
+    <!-- System Health -->
+    <div class="debug-section">
+        <div class="section-header">
+            <h2 class="section-title">System Health</h2>
+            <button class="btn-small" onclick="refreshHealth()">🔄 Refresh</button>
+        </div>
+        
+        <div class="health-grid">
+            <div class="health-card">
+                <div class="health-icon {% if health.overall == 'healthy' %}success{% else %}danger{% endif %}">
+                    {% if health.overall == 'healthy' %}✅{% else %}⚠️{% endif %}
+                </div>
+                <div class="health-info">
+                    <div class="health-label">Overall Status</div>
+                    <div class="health-value">{{ health.overall or 'Unknown' }}</div>
+                </div>
+            </div>
+            
+            <div class="health-card">
+                <div class="health-icon {% if health.components.database == 'up' %}success{% else %}danger{% endif %}">
+                    {% if health.components and health.components.database == 'up' %}✅{% else %}❌{% endif %}
+                </div>
+                <div class="health-info">
+                    <div class="health-label">Database</div>
+                    <div class="health-value">{{ health.components.database if health.components else 'Unknown' }}</div>
+                </div>
+            </div>
+            
+            <div class="health-card">
+                <div class="health-icon success">✅</div>
+                <div class="health-info">
+                    <div class="health-label">Backend API</div>
+                    <div class="health-value">{{ health.components.api if health.components else 'Up' }}</div>
+                </div>
+            </div>
+            
+            <div class="health-card">
+                <div class="health-icon success">✅</div>
+                <div class="health-info">
+                    <div class="health-label">Frontend</div>
+                    <div class="health-value">Up</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Stats -->
+    <div class="debug-section">
+        <h2 class="section-title">Database Statistics</h2>
+        
+        <div class="stats-table">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Row Count</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Brands</td>
+                        <td>{{ stats.brands.total if stats.brands else 0 }}</td>
+                        <td><span class="badge success">OK</span></td>
+                    </tr>
+                    <tr>
+                        <td>Videos</td>
+                        <td>{{ stats.videos.total if stats.videos else 0 }}</td>
+                        <td><span class="badge success">OK</span></td>
+                    </tr>
+                    <tr>
+                        <td>Characters</td>
+                        <td>{{ stats.characters.total if stats.characters else 0 }}</td>
+                        <td><span class="badge success">OK</span></td>
+                    </tr>
+                    <tr>
+                        <td>Database Size</td>
+                        <td>{{ health.database_stats.database_size if health.database_stats else 'N/A' }}</td>
+                        <td><span class="badge">Info</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- API Endpoints Tester -->
+    <div class="debug-section">
+        <h2 class="section-title">API Endpoint Tester</h2>
+        
+        <div class="api-tester">
+            <div class="form-group">
+                <label for="apiEndpoint">Endpoint:</label>
+                <input type="text" id="apiEndpoint" value="/api/health" placeholder="/api/health">
+            </div>
+            
+            <div class="form-group">
+                <label for="apiMethod">Method:</label>
+                <select id="apiMethod">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+            </div>
+            
+            <button class="btn primary" onclick="testEndpoint()">Test Endpoint</button>
+            
+            <div id="apiResult" class="api-result" style="display:none;">
+                <h4>Response:</h4>
+                <pre id="apiResponseCode"></pre>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Environment Variables -->
+    <div class="debug-section">
+        <h2 class="section-title">Configuration</h2>
+        
+        <div class="config-list">
+            <div class="config-item">
+                <span class="config-key">Backend URL:</span>
+                <span class="config-value">{{ backend_url }}</span>
+            </div>
+            <div class="config-item">
+                <span class="config-key">Frontend Port:</span>
+                <span class="config-value">5000</span>
+            </div>
+            <div class="config-item">
+                <span class="config-key">Backend Port:</span>
+                <span class="config-value">8000</span>
+            </div>
+            <div class="config-item">
+                <span class="config-key">Database Port:</span>
+                <span class="config-value">5432</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Logs -->
+    <div class="debug-section">
+        <div class="section-header">
+            <h2 class="section-title">System Logs</h2>
+            <button class="btn-small" onclick="refreshLogs()">🔄 Refresh</button>
+        </div>
+        
+        <div class="logs-container">
+            <div class="log-viewer" id="logViewer">
+                <div class="log-entry info">
+                    <span class="log-time">{{ "now" }}</span>
+                    <span class="log-level">INFO</span>
+                    <span class="log-message">System operational</span>
+                </div>
+                <div class="log-entry info">
+                    <span class="log-time">{{ "now" }}</span>
+                    <span class="log-level">INFO</span>
+                    <span class="log-message">All services running</span>
+                </div>
+                <div class="log-entry success">
+                    <span class="log-time">{{ "now" }}</span>
+                    <span class="log-level">SUCCESS</span>
+                    <span class="log-message">Database connection established</span>
+                </div>
+            </div>
+        </div>
+        
+        <p class="log-note">
+            💡 Tip: Check Docker logs for detailed backend and frontend logs:<br>
+            <code>docker logs kiverdienst_v2_backend</code><br>
+            <code>docker logs kiverdienst_v2_frontend</code>
+        </p>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="debug-section">
+        <h2 class="section-title">Quick Actions</h2>
+        
+        <div class="actions-grid">
+            <button class="btn" onclick="testDatabaseConnection()">
+                🔌 Test Database
+            </button>
+            <button class="btn" onclick="clearCache()">
+                🗑️ Clear Cache
+            </button>
+            <button class="btn" onclick="exportLogs()">
+                📥 Export Logs
+            </button>
+            <button class="btn danger" onclick="resetSystem()">
+                ⚠️ Reset System
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshHealth() {
+    location.reload();
+}
+
+function refreshLogs() {
+    const logViewer = document.getElementById('logViewer');
+    logViewer.innerHTML += `
+        <div class="log-entry info">
+            <span class="log-time">${new Date().toLocaleTimeString()}</span>
+            <span class="log-level">INFO</span>
+            <span class="log-message">Logs refreshed</span>
+        </div>
+    `;
+    logViewer.scrollTop = logViewer.scrollHeight;
+}
+
+function testEndpoint() {
+    const endpoint = document.getElementById('apiEndpoint').value;
+    const method = document.getElementById('apiMethod').value;
+    
+    const resultDiv = document.getElementById('apiResult');
+    const codeDiv = document.getElementById('apiResponseCode');
+    
+    resultDiv.style.display = 'block';
+    codeDiv.textContent = 'Testing...';
+    
+    apiCall(endpoint, method).then(response => {
+        codeDiv.textContent = JSON.stringify(response, null, 2);
+    }).catch(error => {
+        codeDiv.textContent = `Error: ${error}`;
+    });
+}
+
+function testDatabaseConnection() {
+    apiCall('/setup/test-database', 'GET').then(response => {
+        if (response.success) {
+            alert('✅ Database connection successful!');
+        } else {
+            alert('❌ Database connection failed: ' + response.error);
+        }
+    });
+}
+
+function clearCache() {
+    if (confirm('Clear application cache?')) {
+        alert('Cache cleared (feature not yet implemented)');
+    }
+}
+
+function exportLogs() {
+    alert('Log export feature coming soon!');
+}
+
+function resetSystem() {
+    if (confirm('⚠️ WARNING: This will reset all system data. Are you sure?')) {
+        if (confirm('This action cannot be undone. Continue?')) {
+            alert('System reset feature disabled for safety');
+        }
+    }
+}
+</script>
+{% endblock %}

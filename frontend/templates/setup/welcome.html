@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - Welcome{% endblock %}
+
+{% block content %}
+<div class="setup-wizard">
+    <div class="setup-container">
+        <div class="setup-header">
+            <h1>Welcome to KIVerdienst v2</h1>
+            <p>Autonomous AI Content Generation System</p>
+        </div>
+        
+        <div class="setup-content">
+            <div class="welcome-icon">🚀</div>
+            
+            <h2>Let's Get Started</h2>
+            
+            <p class="setup-description">
+                KIVerdienst v2 is your complete solution for automated content creation 
+                across TikTok, Instagram, and YouTube.
+            </p>
+            
+            <div class="features-list">
+                <div class="feature-item">
+                    <span class="feature-icon">✅</span>
+                    <span>Multi-brand management</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">✅</span>
+                    <span>AI-powered content generation</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">✅</span>
+                    <span>Automated script writing</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">✅</span>
+                    <span>Content strategy optimization</span>
+                </div>
+            </div>
+            
+            <div class="setup-actions">
+                <button class="btn primary large" onclick="location.href='/setup/database'">
+                    Continue to Setup →
+                </button>
+            </div>
+        </div>
+        
+        <div class="setup-footer">
+            <div class="setup-steps">
+                <span class="step active">1. Welcome</span>
+                <span class="step">2. Database</span>
+                <span class="step">3. System</span>
+                <span class="step">4. Complete</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

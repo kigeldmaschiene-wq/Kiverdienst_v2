@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Characters - KIVerdienst v2{% endblock %}
+
+{% block header %}
+<div class="page-header-content">
+    <div>
+        <h1 class="page-title">Character Management</h1>
+        <p class="page-subtitle">Manage AI characters and voices</p>
+    </div>
+    <button class="btn primary" onclick="showCreateModal()">
+        <span class="btn-icon">➕</span>
+        Create Character
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="characters-page">
+    <!-- Filters -->
+    <div class="filters">
+        <div class="filter-group">
+            <label>Brand:</label>
+            <select onchange="filterCharacters(this.value)">
+                <option value="">All Brands</option>
+                {% for brand in brands %}
+                <option value="{{ brand.id }}" {% if selected_brand == brand.id %}selected{% endif %}>
+                    {{ brand.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <!-- Characters Grid -->
+    {% if characters %}
+    <div class="characters-grid">
+        {% for character in characters %}
+        <div class="character-card">
+            <div class="character-avatar">
+                {% if character.gender == 'male' %}
+                👨
+                {% elif character.gender == 'female' %}
+                👩
+                {% else %}
+                🎭
+                {% endif %}
+            </div>
+            
+            <div class="character-info">
+                <h3 class="character-name">{{ character.name }}</h3>
+                <p class="character-brand">{{ character.brand_name }}</p>
+                
+                <div class="character-meta">
+                    {% if character.gender %}
+                    <span class="badge">{{ character.gender }}</span>
+                    {% endif %}
+                    <span class="badge {% if character.active %}success{% else %}inactive{% endif %}">
+                        {{ 'Active' if character.active else 'Inactive' }}
+                    </span>
+                </div>
+                
+                {% if character.personality %}
+                <p class="character-personality">{{ character.personality[:100] }}...</p>
+                {% endif %}
+            </div>
+            
+            <div class="character-actions">
+                <button class="btn-icon-small" onclick="editCharacter({{ character.id }})" title="Edit">✏️</button>
+                <button class="btn-icon-small" onclick="viewStats({{ character.id }})" title="Stats">📊</button>
+                <button class="btn-icon-small danger" onclick="deleteCharacter({{ character.id }}, '{{ character.name }}')" title="Delete">🗑️</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🎭</div>
+        <h3>No Characters Yet</h3>
+        <p>Create your first AI character to start generating content</p>
+        <button class="btn primary" onclick="showCreateModal()">Create Character</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Create/Edit Character Modal -->
+<div id="characterModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Create Character</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="characterForm" onsubmit="saveCharacter(event)">
+            <div class="form-group">
+                <label for="brand_id">Brand *</label>
+                <select id="brand_id" name="brand_id" required>
+                    <option value="">Select Brand</option>
+                    {% for brand in brands %}
+                    <option value="{{ brand.id }}">{{ brand.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="name">Character Name *</label>
+                <input type="text" id="name" name="name" required placeholder="e.g., Alex, Sarah">
+            </div>
+            
+            <div class="form-group">
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender">
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="neutral">Neutral</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="voice_id">Voice ID</label>
+                <input type="text" id="voice_id" name="voice_id" placeholder="ElevenLabs Voice ID">
+            </div>
+            
+            <div class="form-group">
+                <label for="personality">Personality</label>
+                <textarea id="personality" name="personality" rows="4" placeholder="Describe the character's personality..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="speaking_style">Speaking Style</label>
+                <textarea id="speaking_style" name="speaking_style" rows="3" placeholder="How does this character speak?"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="active" id="active" checked>
+                    Active
+                </label>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn primary">Save Character</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingCharacterId = null;
+
+function filterCharacters(brandId) {
+    const url = brandId ? `/characters?brand_id=${brandId}` : '/characters';
+    window.location.href = url;
+}
+
+function showCreateModal() {
+    editingCharacterId = null;
+    document.getElementById('modalTitle').textContent = 'Create Character';
+    document.getElementById('characterForm').reset();
+    document.getElementById('characterModal').style.display = 'flex';
+}
+
+function editCharacter(characterId) {
+    editingCharacterId = characterId;
+    document.getElementById('modalTitle').textContent = 'Edit Character';
+    
+    apiCall(`/characters/${characterId}`, 'GET').then(response => {
+        if (response.success) {
+            const char = response.data;
+            document.getElementById('brand_id').value = char.brand_id || '';
+            document.getElementById('name').value = char.name || '';
+            document.getElementById('gender').value = char.gender || '';
+            document.getElementById('voice_id').value = char.voice_id || '';
+            document.getElementById('personality').value = char.personality || '';
+            document.getElementById('speaking_style').value = char.speaking_style || '';
+            document.getElementById('active').checked = char.active;
+            
+            document.getElementById('characterModal').style.display = 'flex';
+        }
+    });
+}
+
+function viewStats(characterId) {
+    window.location.href = `/characters/${characterId}`;
+}
+
+function saveCharacter(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        brand_id: parseInt(formData.get('brand_id')),
+        name: formData.get('name'),
+        gender: formData.get('gender'),
+        voice_id: formData.get('voice_id'),
+        personality: formData.get('personality'),
+        speaking_style: formData.get('speaking_style'),
+        active: formData.get('active') === 'on'
+    };
+    
+    const method = editingCharacterId ? 'PUT' : 'POST';
+    const url = editingCharacterId ? `/characters/${editingCharacterId}` : '/characters';
+    
+    apiCall(url, method, data).then(response => {
+        if (response.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (response.error || 'Failed to save character'));
+        }
+    });
+}
+
+function deleteCharacter(characterId, characterName) {
+    if (confirm(`Are you sure you want to delete "${characterName}"?`)) {
+        apiCall(`/characters/${characterId}`, 'DELETE').then(response => {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (response.error || 'Failed to delete character'));
+            }
+        });
+    }
+}
+
+function closeModal() {
+    document.getElementById('characterModal').style.display = 'none';
+    editingCharacterId = null;
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('characterModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

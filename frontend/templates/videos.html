@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Videos - KIVerdienst v2{% endblock %}
+
+{% block header %}
+<div class="page-header-content">
+    <div>
+        <h1 class="page-title">Video Library</h1>
+        <p class="page-subtitle">Manage your video content</p>
+    </div>
+    <button class="btn primary" onclick="showCreateModal()">
+        <span class="btn-icon">➕</span>
+        Create Video
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="videos-page">
+    <!-- Filters -->
+    <div class="filters">
+        <div class="filter-group">
+            <label>Brand:</label>
+            <select onchange="filterVideos(this.value, '{{ selected_status or '' }}')">
+                <option value="">All Brands</option>
+                {% for brand in brands %}
+                <option value="{{ brand.id }}" {% if selected_brand == brand.id %}selected{% endif %}>
+                    {{ brand.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label>Status:</label>
+            <select onchange="filterVideos('{{ selected_brand or '' }}', this.value)">
+                <option value="">All Statuses</option>
+                <option value="draft" {% if selected_status == 'draft' %}selected{% endif %}>Draft</option>
+                <option value="script_ready" {% if selected_status == 'script_ready' %}selected{% endif %}>Script Ready</option>
+                <option value="generated" {% if selected_status == 'generated' %}selected{% endif %}>Generated</option>
+                <option value="posted" {% if selected_status == 'posted' %}selected{% endif %}>Posted</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Videos Grid -->
+    {% if videos %}
+    <div class="videos-grid">
+        {% for video in videos %}
+        <div class="video-card" onclick="viewVideo({{ video.id }})">
+            <div class="video-thumbnail">
+                {% if video.thumbnail_path %}
+                <img src="{{ video.thumbnail_path }}" alt="{{ video.title }}">
+                {% else %}
+                <div class="placeholder-thumbnail">🎬</div>
+                {% endif %}
+            </div>
+            
+            <div class="video-content">
+                <h3 class="video-title">{{ video.title }}</h3>
+                <p class="video-brand">{{ video.brand_name }}</p>
+                
+                <div class="video-meta">
+                    <span class="badge {{ video.status }}">{{ video.status }}</span>
+                    {% if video.platform %}
+                    <span class="badge">{{ video.platform }}</span>
+                    {% endif %}
+                </div>
+                
+                {% if video.posted %}
+                <div class="video-stats">
+                    <span>👁️ {{ video.views or 0 }}</span>
+                    <span>❤️ {{ video.likes or 0 }}</span>
+                    <span>💬 {{ video.comments or 0 }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="video-actions" onclick="event.stopPropagation()">
+                <button class="btn-icon-small" onclick="editVideo({{ video.id }})" title="Edit">✏️</button>
+                <button class="btn-icon-small danger" onclick="deleteVideo({{ video.id }}, '{{ video.title }}')" title="Delete">🗑️</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🎬</div>
+        <h3>No Videos Yet</h3>
+        <p>Create your first video to get started</p>
+        <button class="btn primary" onclick="showCreateModal()">Create Video</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Create/Edit Video Modal -->
+<div id="videoModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2 id="modalTitle">Create Video</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="videoForm" onsubmit="saveVideo(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="brand_id">Brand *</label>
+                    <select id="brand_id" name="brand_id" required>
+                        <option value="">Select Brand</option>
+                        {% for brand in brands %}
+                        <option value="{{ brand.id }}">{{ brand.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="platform">Platform</label>
+                    <select id="platform" name="platform">
+                        <option value="">Select Platform</option>
+                        <option value="tiktok">TikTok</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="youtube">YouTube</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="title">Title *</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="hook">Hook (First 3 seconds)</label>
+                <input type="text" id="hook" name="hook" placeholder="Grab attention immediately...">
+            </div>
+            
+            <div class="form-group">
+                <label for="script">Script</label>
+                <textarea id="script" name="script" rows="10" placeholder="Video script..."></textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="content_type">Content Type</label>
+                    <select id="content_type" name="content_type">
+                        <option value="">Select Type</option>
+                        <option value="educational">Educational</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="viral">Viral</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status">
+                        <option value="draft">Draft</option>
+                        <option value="script_ready">Script Ready</option>
+                        <option value="generated">Generated</option>
+                        <option value="posted">Posted</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn primary">Save Video</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingVideoId = null;
+
+function filterVideos(brandId, status) {
+    let url = '/videos?';
+    if (brandId) url += `brand_id=${brandId}&`;
+    if (status) url += `status=${status}`;
+    window.location.href = url;
+}
+
+function showCreateModal() {
+    editingVideoId = null;
+    document.getElementById('modalTitle').textContent = 'Create Video';
+    document.getElementById('videoForm').reset();
+    document.getElementById('videoModal').style.display = 'flex';
+}
+
+function viewVideo(videoId) {
+    window.location.href = `/videos/${videoId}`;
+}
+
+function editVideo(videoId) {
+    editingVideoId = videoId;
+    document.getElementById('modalTitle').textContent = 'Edit Video';
+    
+    apiCall(`/videos/${videoId}`, 'GET').then(response => {
+        if (response.success) {
+            const video = response.data;
+            document.getElementById('brand_id').value = video.brand_id || '';
+            document.getElementById('title').value = video.title || '';
+            document.getElementById('hook').value = video.hook || '';
+            document.getElementById('script').value = video.script || '';
+            document.getElementById('content_type').value = video.content_type || '';
+            document.getElementById('status').value = video.status || '';
+            document.getElementById('platform').value = video.platform || '';
+            
+            document.getElementById('videoModal').style.display = 'flex';
+        }
+    });
+}
+
+function saveVideo(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        brand_id: parseInt(formData.get('brand_id')),
+        title: formData.get('title'),
+        hook: formData.get('hook'),
+        script: formData.get('script'),
+        content_type: formData.get('content_type'),
+        status: formData.get('status') || 'draft',
+        platform: formData.get('platform')
+    };
+    
+    const method = editingVideoId ? 'PUT' : 'POST';
+    const url = editingVideoId ? `/videos/${editingVideoId}` : '/videos';
+    
+    apiCall(url, method, data).then(response => {
+        if (response.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (response.error || 'Failed to save video'));
+        }
+    });
+}
+
+function deleteVideo(videoId, videoTitle) {
+    if (confirm(`Are you sure you want to delete "${videoTitle}"?`)) {
+        apiCall(`/videos/${videoId}`, 'DELETE').then(response => {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (response.error || 'Failed to delete video'));
+            }
+        });
+    }
+}
+
+function closeModal() {
+    document.getElementById('videoModal').style.display = 'none';
+    editingVideoId = null;
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('videoModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

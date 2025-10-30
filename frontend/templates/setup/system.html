@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Setup - System Configuration{% endblock %}
+
+{% block content %}
+<div class="setup-wizard">
+    <div class="setup-container">
+        <div class="setup-header">
+            <h1>System Configuration</h1>
+            <p>Configure optional system settings</p>
+        </div>
+        
+        <div class="setup-content">
+            <form id="systemForm" onsubmit="saveSystemConfig(event)">
+                <div class="form-group">
+                    <label for="ollama_url">Ollama API URL</label>
+                    <input type="text" 
+                           id="ollama_url" 
+                           name="ollama_url" 
+                           value="http://ollama:11434"
+                           placeholder="http://ollama:11434">
+                    <small>URL for Ollama LLM service (optional for now)</small>
+                </div>
+                
+                <div class="info-box">
+                    <h4>Optional Components</h4>
+                    <p>These components can be configured later:</p>
+                    <ul>
+                        <li>Ollama LLM - For AI content generation</li>
+                        <li>ElevenLabs - For voice synthesis</li>
+                        <li>Video generation - For automated video creation</li>
+                    </ul>
+                    <p><small>You can skip this step and configure these later in settings.</small></p>
+                </div>
+                
+                <div class="setup-actions">
+                    <button type="button" class="btn" onclick="location.href='/setup/database'">
+                        ← Back
+                    </button>
+                    <button type="submit" class="btn primary">
+                        Continue →
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="setup-footer">
+            <div class="setup-steps">
+                <span class="step completed">1. Welcome</span>
+                <span class="step completed">2. Database</span>
+                <span class="step active">3. System</span>
+                <span class="step">4. Complete</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function saveSystemConfig(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        ollama_url: formData.get('ollama_url')
+    };
+    
+    // Save config and complete setup
+    apiCall('/setup/complete', 'POST', data).then(response => {
+        if (response.success) {
+            location.href = '/setup/complete';
+        } else {
+            alert('Error: ' + (response.error || 'Failed to save configuration'));
+        }
+    });
+}
+</script>
+{% endblock %}

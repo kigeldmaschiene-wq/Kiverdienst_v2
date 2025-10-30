@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - KIVerdienst v2{% endblock %}
+
+{% block header %}
+<h1 class="page-title">Dashboard</h1>
+<p class="page-subtitle">System Overview & Statistics</p>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">🏢</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.brands.total if stats.brands else 0 }}</div>
+                <div class="stat-label">Total Brands</div>
+                <div class="stat-meta">{{ stats.brands.active if stats.brands else 0 }} active</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">🎬</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.videos.total if stats.videos else 0 }}</div>
+                <div class="stat-label">Total Videos</div>
+                <div class="stat-meta">{{ stats.videos.posted if stats.videos else 0 }} posted</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">👁️</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ (stats.engagement.total_views | string).rjust(10, '0')[:10] if stats.engagement else '0' }}</div>
+                <div class="stat-label">Total Views</div>
+                <div class="stat-meta">{{ stats.engagement.total_likes if stats.engagement else 0 }} likes</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">🎭</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.characters.total if stats.characters else 0 }}</div>
+                <div class="stat-label">Characters</div>
+                <div class="stat-meta">{{ stats.characters.active if stats.characters else 0 }} active</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="section">
+        <h2 class="section-title">Quick Actions</h2>
+        <div class="actions-grid">
+            <button class="action-btn primary" onclick="showCreateBrandModal()">
+                <span class="btn-icon">➕</span>
+                Create Brand
+            </button>
+            <button class="action-btn success" onclick="showCreateVideoModal()">
+                <span class="btn-icon">🎬</span>
+                New Video
+            </button>
+            <button class="action-btn" onclick="showCreateCharacterModal()">
+                <span class="btn-icon">🎭</span>
+                Add Character
+            </button>
+            <button class="action-btn" onclick="location.href='/content'">
+                <span class="btn-icon">📅</span>
+                Content Calendar
+            </button>
+        </div>
+    </div>
+    
+    <!-- Active Brands -->
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">Active Brands</h2>
+            <a href="{{ url_for('brands') }}" class="link">View All →</a>
+        </div>
+        
+        {% if brands %}
+        <div class="brands-grid">
+            {% for brand in brands[:4] %}
+            <div class="brand-card" onclick="location.href='/brands/{{ brand.id }}'">
+                <div class="brand-header">
+                    <h3 class="brand-name">{{ brand.name }}</h3>
+                    <span class="badge {% if brand.active %}success{% else %}inactive{% endif %}">
+                        {{ 'Active' if brand.active else 'Inactive' }}
+                    </span>
+                </div>
+                <p class="brand-niche">{{ brand.niche or 'No niche set' }}</p>
+                <div class="brand-stats">
+                    <div class="brand-stat">
+                        <span class="stat-num">{{ brand.video_count or 0 }}</span>
+                        <span class="stat-lbl">Videos</span>
+                    </div>
+                    <div class="brand-stat">
+                        <span class="stat-num">{{ brand.character_count or 0 }}</span>
+                        <span class="stat-lbl">Characters</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No brands created yet. Create your first brand to get started!</p>
+            <button class="btn primary" onclick="showCreateBrandModal()">Create Brand</button>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Recent Videos -->
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">Recent Videos</h2>
+            <a href="{{ url_for('videos') }}" class="link">View All →</a>
+        </div>
+        
+        {% if recent_videos %}
+        <div class="video-list">
+            {% for video in recent_videos[:5] %}
+            <div class="video-item">
+                <div class="video-thumbnail">
+                    🎬
+                </div>
+                <div class="video-info">
+                    <h4 class="video-title">{{ video.title }}</h4>
+                    <p class="video-meta">{{ video.brand_name or 'Unknown Brand' }} • {{ video.status }}</p>
+                </div>
+                <div class="video-stats">
+                    <span class="stat">👁️ {{ video.views or 0 }}</span>
+                    <span class="stat">❤️ {{ video.likes or 0 }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No videos yet. Start creating content!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showCreateBrandModal() {
+    window.location.href = '/brands';
+}
+
+function showCreateVideoModal() {
+    window.location.href = '/videos';
+}
+
+function showCreateCharacterModal() {
+    window.location.href = '/characters';
+}
+</script>
+{% endblock %}

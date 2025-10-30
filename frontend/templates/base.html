@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}KIVerdienst v2{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo">KIVerdienst</h1>
+                <p class="version">v2.0</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+                
+                <a href="{{ url_for('brands') }}" class="nav-item {% if request.endpoint in ['brands', 'brand_detail'] %}active{% endif %}">
+                    <span class="nav-icon">🏢</span>
+                    <span class="nav-label">Brands</span>
+                </a>
+                
+                <a href="{{ url_for('videos') }}" class="nav-item {% if request.endpoint in ['videos', 'video_detail'] %}active{% endif %}">
+                    <span class="nav-icon">🎬</span>
+                    <span class="nav-label">Videos</span>
+                </a>
+                
+                <a href="{{ url_for('characters') }}" class="nav-item {% if request.endpoint in ['characters', 'character_detail'] %}active{% endif %}">
+                    <span class="nav-icon">🎭</span>
+                    <span class="nav-label">Characters</span>
+                </a>
+                
+                <a href="{{ url_for('content_strategy') }}" class="nav-item {% if request.endpoint == 'content_strategy' %}active{% endif %}">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-label">Content Strategy</span>
+                </a>
+                
+                <div class="nav-divider"></div>
+                
+                <a href="{{ url_for('debug') }}" class="nav-item {% if request.endpoint == 'debug' %}active{% endif %}">
+                    <span class="nav-icon">🔧</span>
+                    <span class="nav-label">Debug</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">System Active</span>
+                </div>
+            </div>
+        </aside>
+        
+        <main class="content">
+            <div class="content-header">
+                {% block header %}{% endblock %}
+            </div>
+            
+            <div class="content-body">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
